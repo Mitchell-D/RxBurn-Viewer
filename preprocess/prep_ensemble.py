@@ -90,14 +90,6 @@ if __name__=="__main__":
                     (ifs_shape, ds.variables[fk].shape)
         ds.close()
 
-    ## consolidate attribute data for the ifs ensemble group
-    ifs_attrs = {
-        "dims":ifs_dims,
-        "feats":get_raw_ifs_feats,
-        "shape":(len(get_raw_ifs_feats), *ifs_shape),
-        "geo_ref":geo_ref
-        }
-
     ## open the zarr store
     zstor = zarr.storage.LocalStore(zarr_out_path)
 
@@ -118,9 +110,9 @@ if __name__=="__main__":
     zgrp_ifs_spatial = zarr.open(zstor, path="/ens/ifs/spatial", mode="a")
     zgrp_ifs_temporal = zarr.open(zstor, path="/ens/ifs/temporal", mode="a")
     dims_spatial = (
-        "lead_time", "latitude", "longitude", "feat", "metric")
+        "lead_time", "latitude", "longitude", "feats", "metrics_spatial")
     dims_temporal = (
-        "lead_time", "latitude", "longitude", "feat", "ensemble_member")
+        "lead_time", "latitude", "longitude", "feats", "ensemble_member")
     shape_spatial = (
             ifs_dim_sizes["lead_time"],
             ifs_dim_sizes["latitude"],
@@ -180,31 +172,30 @@ if __name__=="__main__":
                 np.percentile(farr, 90, method=pctl_interp_method, axis=-1),
                 ], axis=-1)
         ds.close()
-    exit(0)
 
-    zgrp_ifs_data = zarr.open(zstor, path="/ens/ifs/data", mode="a")
+    if eliminate_out_of_range:
+        for tstr in zgrp_ifs_temporal.keys():
+            tmpt = datetime.strptime(tstr, "%Y%m%d%H")
+            t0,tf = ingest_init_date_range
+            if tmpt < t0 or tmpt > tf:
+                del zgrp_ifs_temporal[tmpt]
 
-    if "ifs" not in zgrp.keys():
-        zgrp.create_array(
-            "ifs_spatial",
-            shape=ifs_attrs["shape"],
-            chunks=tuple(ifs_chunks[k] for k in ifs_attrs["dims"])
-            )
-        zgrp.create_array(
-            "ifs_temporal",
-            shape=ifs_attrs["shape"],
-            chunks=tuple(ifs_chunks[k] for k in ifs_attrs["dims"])
-            )
-    print(list(zgrp.keys()))
-
-    """ -----( GEFS ingest pipeline )----- """
-
-    exit(0)
-
-    ingest_gefs_ncs = list(sorted([
-        (p,t) for p,t in map(
-            lambda p:(p,datetime.strptime(p.stem.split("_")[0], "%Y%m%d%H")),
-            src_gefs_dir.iterdir()
-            )
-        if t>=ingest_init_date_range[0] and t<=ingest_init_date_range[1]
-        ], key=lambda pt:pt[1]))
+    ## consolidate attribute data for the ifs ensemble group
+    zgrp_ifs = zarr.open(zstor, path="/ens/ifs", mode="a")
+    zgrp_ifs.attrs.update({
+        "feats":get_raw_ifs_feats,
+        "metrics_spatial":metrics_spatial,
+        "latitude_bounds":[
+            np.amin(zgrp_ifs_coords["latitude"]),
+            np.amax(zgrp_ifs_coords["latitude"]),
+            ],
+        "longitude_bounds":[
+            np.amin(zgrp_ifs_coords["longitude"]),
+            np.amax(zgrp_ifs_coords["longitude"]),
+            ],
+        "dims_spatial":dims_spatial,
+        "dims_temporal":dims_temporal,
+        "shape":(len(get_raw_ifs_feats), *ifs_shape),
+        "geo_ref":geo_ref
+        })
+    print(f"finished")
