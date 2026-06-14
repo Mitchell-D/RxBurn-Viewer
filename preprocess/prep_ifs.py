@@ -4,16 +4,29 @@ import zarr
 from datetime import datetime,timedelta
 from pathlib import Path
 
+from config import cfg_ifs
+
+def rescale(x, feat_key, metric_key):
+    """
+    apply mask and re-normalize to uint16 according to the configuration
+    """
+    m_invalid = (~np.isfinite(x)) | (x >=cfg_ifs["invalid_thresh"])
+    tmp_min,tmp_max = cfg_ifs["norm_bounds"][feat_key][metric_key]
+    x = (np.clip(x, tmp_min, tmp_max) - tmp_min) / (tmp_max - tmp_min)
+    ## each value should correspond to the lower bound of its bin range
+    x = np.floor(np.clip(x * (cfg_ifs["norm_res"]+1), 0, cfg_ifs["norm_res"]))
+    x[m_invalid] = cfg_ifs["mask_val"]
+    return x.astype(np.uint16)
+
 if __name__=="__main__":
     data_dir = Path("data")
     src_ifs_dir = data_dir.joinpath("source/ifs_ens")
-    src_gefs_dir = data_dir.joinpath("source/gefs")
     zarr_out_path = data_dir.joinpath("store/rxburn.zarr")
 
     ## If True, completely overwrite any existing ensemble runs by init time.
     ## Coordinate and attribute data is always overwritten, so if appending
     ## with overwrite_existing=False, make sure they still apply.
-    overwrite_existing = False
+    overwrite_existing = True
 
     ## If True, delete existing init times from the zarr store if they fall
     ## outside the ingest_init_date_range
@@ -21,31 +34,6 @@ if __name__=="__main__":
 
     ## inclusive range of initialization times of ensemble files to acquire
     ingest_init_date_range = [datetime(2026,4,8), datetime(2026,4,9)]
-
-    ## (lead_time, ensemble_member, latitude, longitude)
-    get_raw_ifs_feats = [
-            "temperature_2m", "relative_humidity_2m", "wspd",
-            ]
-
-    ## numpy percentile interpolation method for percentiles falling between
-    ## data points (linear, lower, higher, midpoint, or nearest)
-    pctl_interp_method = "linear"
-
-    ## None -> chunk size is data size
-    ifs_temporal_chunks = {
-        #"ensemble_member":None,
-        "latitude":1,
-        "longitude":1,
-        #"lead_time":None,
-        #"feat":None,
-        }
-    ifs_spatial_chunks = {
-        #"metric":None,
-        #"latitude":None,
-        #"longitude":None,
-        "lead_time":1,
-        "feat":1,
-        }
 
     """ -----( IFS ingest pipeline )----- """
 
@@ -69,7 +57,7 @@ if __name__=="__main__":
     geo_ref = None
     for p,t in ingest_ifs_ncs:
         ds = nc.Dataset(p.as_posix(), mode="r")
-        for fk in get_raw_ifs_feats:
+        for fk in cfg_ifs["get_raw_ifs_feats"]:
             assert fk in ds.variables.keys(), f"{fk} not in {p.as_posix()}"
             if ifs_dims is None:
                 ifs_dims = ds.variables[fk].dimensions
@@ -103,31 +91,37 @@ if __name__=="__main__":
         zgrp_ifs_coords[dk][...] = tmp_ds.variables[dk][...]
     tmp_ds.close()
 
-    ## spatial arrays are shaped (metric, time, lat, lon, feat)
-    ## temporal arrays are shaped (member, time, lat, lon, feat)
+    ## Declare separate groups for the spatial and temporal arrays
     ## 'a' mode doesn't destroy the store if it exists, but enables writing
     ifs_dim_sizes = dict(zip(ifs_dims, ifs_shape))
     zgrp_ifs_spatial = zarr.open(zstor, path="/ens/ifs/spatial", mode="a")
     zgrp_ifs_temporal = zarr.open(zstor, path="/ens/ifs/temporal", mode="a")
+
+    ## labels and shapes for the dimensions of both
     dims_spatial = (
-        "lead_time", "latitude", "longitude", "feats", "metrics_spatial")
+        "feats", "metrics", "horizon_time", "latitude", "longitude"
+        )
     dims_temporal = (
-        "lead_time", "latitude", "longitude", "feats", "ensemble_member")
+        "feats", "horizon_time", "latitude", "longitude", "ensemble_member"
+        )
     shape_spatial = (
+            len(cfg_ifs["get_raw_ifs_feats"]),
+            len(metrics_spatial),
             ifs_dim_sizes["lead_time"],
             ifs_dim_sizes["latitude"],
             ifs_dim_sizes["longitude"],
-            len(get_raw_ifs_feats),
-            len(metrics_spatial),
             )
     shape_temporal = (
+            len(cfg_ifs["get_raw_ifs_feats"]),
             ifs_dim_sizes["lead_time"],
             ifs_dim_sizes["latitude"],
             ifs_dim_sizes["longitude"],
-            len(get_raw_ifs_feats),
             ifs_dim_sizes["ensemble_member"],
             )
-    for src_path,tstr in ingest_ifs_ncs:
+
+    init_times_str = []
+    horizon_times_str = {}
+    for src_path,tstr in sorted(ingest_ifs_ncs):
         ds = nc.Dataset(src_path, mode="r")
         if tstr in zgrp_ifs_spatial.keys():
             if overwrite_existing:
@@ -135,44 +129,61 @@ if __name__=="__main__":
                 del zgrp_ifs_temporal[tstr]
             else:
                 continue
+
+        itstr,_ = src_path.stem.split("_")
+        init_time = datetime.strptime(itstr, "%Y%m%d%H")
+        init_times_str.append(itstr)
+        horizon_times_str[itstr] = [
+            (init_time + timedelta(seconds=int(lts))).strftime("%Y%m%d%H%M")
+            for lts in list(ds["lead_time"][...].data)
+            ]
+
         zgrp_ifs_spatial.create_array(
             tstr,
             shape=shape_spatial,
             chunks=tuple(
-                ifs_spatial_chunks.get(k, shape_spatial[i])
+                cfg_ifs["spatial_chunks"].get(k, shape_spatial[i])
                 for i,k in enumerate(dims_spatial)
                 ),
-            dtype=np.float32,
+            shards=shape_spatial,
+            dtype=np.uint16,
             )
         zgrp_ifs_temporal.create_array(
             tstr,
             shape=shape_temporal,
             chunks=tuple(
-                ifs_temporal_chunks.get(k, shape_temporal[i])
+                cfg_ifs["temporal_chunks"].get(k, shape_temporal[i])
                 for i,k in enumerate(dims_temporal)
                 ),
-            dtype=np.float32,
+            shards=shape_temporal,
+            dtype=np.uint16,
             )
-        for fix,fk in enumerate(get_raw_ifs_feats):
-            farr = ds.variables[fk][...].transpose(0,2,3,1)
+        for fix,fk in enumerate(cfg_ifs["get_raw_ifs_feats"]):
+            ## originally (horizon, ensemble, lat, lon)
+            farr = ds.variables[fk][...].data
             ## temporal array maintains individual ensemble members, and lets
             ## the client side calculate statistics
-            zgrp_ifs_temporal[tstr][:,:,:,fix,:] = farr
-            ## "min", "max", "mean", "stddev",
-            ## "10pct", "25pct", "50pct", "75pct", "90pct"
-            zgrp_ifs_spatial[tstr][:,:,:,fix,:] = np.stack([
-                np.amin(farr, axis=-1),
-                np.amax(farr, axis=-1),
-                np.average(farr, axis=-1),
-                np.std(farr, axis=-1),
-                np.percentile(farr, 10, method=pctl_interp_method, axis=-1),
-                np.percentile(farr, 25, method=pctl_interp_method, axis=-1),
-                np.percentile(farr, 50, method=pctl_interp_method, axis=-1),
-                np.percentile(farr, 75, method=pctl_interp_method, axis=-1),
-                np.percentile(farr, 90, method=pctl_interp_method, axis=-1),
-                ], axis=-1)
+            ## store shape: (feat, horizon, lat, lon, ensemble)
+            zgrp_ifs_temporal[tstr][fix] = rescale(
+                    farr.transpose(0,2,3,1), fk, "default")
+            pim = cfg_ifs["pctl_interp_method"]
+            ## reduce along the ensemble axis to (horizon, lat, lon)
+            ## stack to (metric, horizon, lat, lon)
+            ## store shape: (feat, metric, horizon, lat, lon)
+            zgrp_ifs_spatial[tstr][fix] = np.stack([
+                rescale(np.amin(farr,axis=1),fk,"min"),
+                rescale(np.amax(farr,axis=1),fk,"max"),
+                rescale(np.average(farr,axis=1),fk,"mean"),
+                rescale(np.std(farr,axis=1),fk,"stddev"),
+                rescale(np.percentile(farr,10,method=pim,axis=1),fk,"10pct"),
+                rescale(np.percentile(farr,25,method=pim,axis=1),fk,"25pct"),
+                rescale(np.percentile(farr,50,method=pim,axis=1),fk,"50pct"),
+                rescale(np.percentile(farr,75,method=pim,axis=1),fk,"75pct"),
+                rescale(np.percentile(farr,90,method=pim,axis=1),fk,"90pct"),
+                ], axis=0)
         ds.close()
 
+    ## Remove dates the fall out of the ingest range, if requested
     if eliminate_out_of_range:
         for tstr in zgrp_ifs_temporal.keys():
             tmpt = datetime.strptime(tstr, "%Y%m%d%H")
@@ -183,8 +194,16 @@ if __name__=="__main__":
     ## consolidate attribute data for the ifs ensemble group
     zgrp_ifs = zarr.open(zstor, path="/ens/ifs", mode="a")
     zgrp_ifs.attrs.update({
-        "feats":get_raw_ifs_feats,
-        "metrics_spatial":metrics_spatial,
+        ## structure
+        "feats":cfg_ifs["get_raw_ifs_feats"],
+        "metrics":metrics_spatial,
+        "dims_spatial":dims_spatial,
+        "dims_temporal":dims_temporal,
+
+        "init_times":init_times_str,
+        "horizon_times":horizon_times_str,
+
+        ## geometry
         "latitude_bounds":[
             np.amin(zgrp_ifs_coords["latitude"]),
             np.amax(zgrp_ifs_coords["latitude"]),
@@ -193,9 +212,19 @@ if __name__=="__main__":
             np.amin(zgrp_ifs_coords["longitude"]),
             np.amax(zgrp_ifs_coords["longitude"]),
             ],
-        "dims_spatial":dims_spatial,
-        "dims_temporal":dims_temporal,
-        "shape":(len(get_raw_ifs_feats), *ifs_shape),
-        "geo_ref":geo_ref
+        "shape_spatial":shape_spatial,
+        "shape_temporal":shape_temporal,
+        "geo_ref":geo_ref,
+
+        ## data normalization
+        "norm_bounds":cfg_ifs["norm_bounds"],
+        "norm_res":cfg_ifs["norm_res"],
+        "mask_val":cfg_ifs["mask_val"],
+
+        ## labels
+        "long_labels_feats":cfg_ifs["long_labels_feats"],
+        "long_labels_metrics":cfg_ifs["long_labels_metrics"],
+        "long_labels_units":cfg_ifs["long_labels_units"],
+        "short_labels_units":cfg_ifs["short_labels_units"],
         })
     print(f"finished")

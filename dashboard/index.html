@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+      <title>RxBurn Dashboard</title>
+      <!--<link rel="icon" href="resources/images/favicon.ico">-->
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Document</title>
+
+      <link rel="icon" type="image/png" href="/images/favicon-96x96.png" sizes="96x96" />
+      <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
+      <link rel="shortcut icon" href="/images/favicon.ico" />
+
+      <link rel="stylesheet" href="pkgs/bootstrap-5.0.2-dist/css/bootstrap.min.css"></link>
+      <link rel="stylesheet" href="pkgs/font-awesome-all.min.css"></link>
+      <link rel="stylesheet" href="styles.css"></link>
+      <!--<link rel="stylesheet" href="pkgs/leaflet/leaflet.css"></link>-->
+      <!--<script type="text/javascript" src="pkgs/leaflet/leaflet.js"></script>-->
+      <script src="pkgs/d3.min.js"></script>
+      <script type="text/javascript" src="pkgs/maplibre-gl.js"></script>
+      <link rel="stylesheet" href="pkgs/maplibre-gl.css"></link>
+      <!--<script type="text/json" src="pkgs/maplibre-gl.js.map"></script>-->
+  </head>
+  <body>
+    <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
+        <a class="navbar-brand col-md-4 col-lg-2 me-0 px-3" href="#">RxBurn Ensemble Forecast Dashboard</a>
+    </header>
+
+    <div class="container-fluid row">
+    <div class="col-md-2 bg-light">
+      <div class="row" id="menu_feat_row">
+        <div class="col">
+          <div class="row justify-content-center">
+            <p class="menu-section-title">Data Feature</p>
+          </div>
+          <div class="row">
+            <div class="col menu-button-column" id="menu_container_feat"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" id="menu_metric_row">
+        <hr class="menu-rule"/>
+        <div class="col">
+          <div class="row justify-content-center">
+            <p class="menu-section-title">Ensemble Metric</p>
+          </div>
+          <div class="row">
+            <div class="col menu-button-column" id="menu_container_metric"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" id="menu_pgroup_row">
+        <hr class="menu-rule"/>
+        <div class="col">
+          <div class="row justify-content-center">
+            <p class="menu-section-title">Polygon Set</p>
+          </div>
+          <div class="row">
+            <div class="col menu-button-column" id="menu_container_pgroup"></div>
+          </div>
+        </div>
+      </div>
+      <div class="row" id="menu_cmap_row">
+        <hr class="menu-rule"/>
+        <div class="col-md-12">
+          <div class="row justify-content-center">
+            <p class="menu-section-title">Color Map + Bounds</p>
+          </div>
+
+          <div class="row dropdown menu-button-container">
+            <button class="btn btn-primary dropdown-toggle dropdown-button menu-button" type="button" id="dd_button_cmap_name" data-bs-toggle="dropdown" aria-expanded="false">
+            </button>
+            <ul id="dd_cmap_name" class="dropdown-menu" aria-labelledby="dd_button_cmap_name"></ul>
+          </div>
+
+          <div class="row dropdown menu-button-container" style="display:none;">
+            <button class="btn btn-primary dropdown-toggle dropdown-button menu-button" type="button" id="dd_button_cmap_res" data-bs-toggle="dropdown" aria-expanded="false">
+            </button>
+            <ul id="dd_cmap_res" class="dropdown-menu" aria-labelledby="dd_button_cmap_res"></ul>
+          </div>
+
+          <div class="row" id="cmap_slider_row">
+            <div class="col-md-12" id="cmap_menu_container">
+
+              <div class="row" style="display:none;">
+                <div class="col-md-6 slider-label-container">
+                    Min: <span class="slider-label slider-label-min"></span>
+                </div>
+                <div class="col-md-6 slider-label-container">
+                    Max: <span class="slider-label slider-label-max"></span>
+                </div>
+              </div>
+
+              <div class="row menu-button-container">
+                <div class="slider-track">
+                  <div class="slider-range"></div>
+                  <div class="slider-handle slider-handle-min"></div>
+                  <div class="slider-handle slider-handle-max"></div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6 bounds-input-container">
+                  <label for="slider_input_min">Minimum Value</label>
+                  <input type="number" id="slider_input_min"></input>
+                </div>
+                <div class="col-md-6 bounds-input-container">
+                  <label for="slider_input_max">Maximum Value</label>
+                  <input type="number" id="slider_input_max"></input>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        <!--<hr class="menu-rule"/>-->
+      </div>
+    </div>
+
+    <div class="col-md-6" id="center_col">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="row justify-content-center">
+              <p id="main_header_text">---</p>
+          </div>
+          <div class="row" id="main_canvas_row">
+            <div class="d-inline-block" id="cbar_container">
+              <div class="row h-100">
+                <div class="d-inline-block" id="cbar_axis_col">
+                  <div id="cbar_axis_container">
+                    <svg id="cbar_axis"></svg>
+                  </div>
+                </div>
+                <div class="d-inline-block" id="cbar_raster_col">
+                  <div id="cbar_raster_container"></div>
+                </div>
+              </div>
+            </div>
+            <div class="d-inline-block" id="map_container">
+              <div id="main_map_container"></div>
+            </div>
+          </div>
+          <!--
+          <div class="row justify-content-center">
+            <h6 id="main_label_active" class="text-center"></h6>
+          </div>
+          -->
+          <div class="row justify-content-center">
+            <div id="main_container_ticker" class="col d-flex flex-wrap justify-content-center align-items-center"></div>
+          </div>
+          <div class="row" id="buffer_forms">
+            <div class="col-xl-4 align-self-center order-xl-2">
+              <div class="row justify-content-center">
+                <button data-placement="left" class="btn m-1 buffer-button w-25" id="buffer_button_prev" aria-label="back">
+                  <span class="fa-solid fa-chevron-left fa-xs buffer-fa-span"></span>
+                </button>
+                <button class="btn m-1 buffer-button w-25" id="buffer_button_toggle" aria-label="toggle_playback">
+                  <span class="fa-solid fa-play fa-xs buffer-fa-span"></span>
+                  <span class="fa-solid fa-pause fa-xs buffer-fa-span"></span>
+                </button>
+                <button data-placement="left" class="btn m-1 buffer-button w-25" id="buffer_button_next" aria-label="forward">
+                  <span class="fa-solid fa-chevron-right fa-xs buffer-fa-span"></span>
+                </button>
+              </div>
+            </div>
+            <div class="col-xl-4 align-self-center order-xl-1">
+              <div class="row" id="buffer_date_range_row">
+                <!--
+                <div class="input-group justify-content-center" id="buffer_container_daterange">
+                  <label for="buffer_date_range" class="form-label" id="buffer_label_date">Date Range</label>
+                  <input id="buffer_date_range" name="daterange" class="text-center form-control" type="text"/>
+                </div>
+                -->
+              </div>
+            </div>
+            <div class="col-xl-4 align-self-center order-xl-3">
+              <div class="row">
+                <div class="input-group justify-content-center" id="buffer_container_framedelay">
+                  <label for="buffer_input_framedelay" class="form-label" id="buffer_label_framedelay">Frame Delay (ms)</label>
+                  <input id="buffer_input_framedelay" class="text-center form-control" type="number" step=10 min=30 value=100 max=500></input>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="row" id="fig_daily_container"></div>
+      <div class="row" id="fig_anom_container"></div>
+      <div class="row" id="fig_hist_container"></div>
+    </div>
+
+    <template id="menu_button_temp">
+      <div class="row menu-button-container">
+        <button type="button" class="btn btn-secondary menu-button"></button>
+      </div>
+    </template>
+
+    <!-- general drop-down menu template -->
+
+    <template id="menu_dropdown_temp"><li><a class="dropdown-item" href="#"></a></li></template>
+
+    <template id="split_dropdown_temp">
+      <li>
+        <a class="dropdown-item" href="#">
+            <div class="row">
+                <div class="col-md-6 split-dd-text"></div>
+                <div class="col-md-6 split-dd-image"></div>
+            </div>
+        </a>
+      </li>
+    </template>
+
+    <!-- frame ticker template -->
+
+    <template id="ticker_template">
+        <div id="" class="buffer-ticker buffer-ticker-disabled"></div>
+    </template>
+
+    <!-- map click tooltip template -->
+
+    <template id="tooltip_template">
+      <div id="tooltip_container_inner" class="tooltip-text">
+        <div id="tooltip_button_close">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </div>
+        <p id="tooltip_location" class="tooltip-text"></p>
+        <p id="tooltip_value" class="tooltip-text"></p>
+        <button id="tooltip_button_timeseries" class="btn tooltip-text">Generate Time Series</button>
+      </div>
+    </template>
+
+
+    <script type="text/javascript" src="pkgs/jquery.min.js"></script>
+    <script type="text/javascript" src="pkgs/moment.min.js"></script>
+    <script type="text/javascript" src="pkgs/daterangepicker.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="pkgs/daterangepicker.css" />
+    <script type="module" src="js/main.js" async></script>
+    <script src="pkgs/popper.min.js"></script>
+    <script src="pkgs/bootstrap-5.0.2-dist/js/bootstrap.bundle.min.js"></script>
+    <!--
+    <script src="pkgs/highcharts/highcharts.js"></script>
+    <script src="pkgs/highcharts/highcharts-more.js"></script>
+    <script src="pkgs/highcharts/modules/exporting.js"></script>
+    <script src="pkgs/highcharts/modules/export-data.js"></script>
+    <script src="pkgs/highcharts/themes/adaptive.js"></script>
+    -->
+  </body>
+</html>
