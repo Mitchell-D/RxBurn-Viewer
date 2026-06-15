@@ -21,12 +21,15 @@ cfg_ifs = {
             "min":(-50, 50),
             "max":(-50, 50),
             "mean":(-50, 50),
-            "stddev":(0,  20),
+            "stddev":(0,  50),
             "10pct":(-50, 50),
             "25pct":(-50, 50),
             "50pct":(-50, 50),
             "75pct":(-50, 50),
             "90pct":(-50, 50),
+            "max-min":(0, 100),
+            "90-10pct":(0, 100),
+            "75-25pct":(0, 100),
             },
         "relative_humidity_2m":{
             "default":(0, 100),
@@ -39,6 +42,9 @@ cfg_ifs = {
             "50pct":(0, 100),
             "75pct":(0, 100),
             "90pct":(0, 100),
+            "max-min":(0, 100),
+            "90-10pct":(0, 100),
+            "75-25pct":(0, 100),
             },
         "wspd":{
             "default":(0, 50),
@@ -51,6 +57,9 @@ cfg_ifs = {
             "50pct":(0, 50),
             "75pct":(0, 50),
             "90pct":(0, 50),
+            "max-min":(0, 50),
+            "90-10pct":(0, 50),
+            "75-25pct":(0, 50),
             },
         },
     "norm_bounds":{
@@ -59,12 +68,15 @@ cfg_ifs = {
             "min":(-50, 50),
             "max":(-50, 50),
             "mean":(-50, 50),
-            "stddev":(0,  20),
+            "stddev":(0,  50),
             "10pct":(-50, 50),
             "25pct":(-50, 50),
             "50pct":(-50, 50),
             "75pct":(-50, 50),
             "90pct":(-50, 50),
+            "max-min":(0, 100),
+            "90-10pct":(0, 100),
+            "75-25pct":(0, 100),
             },
         "relative_humidity_2m":{
             "default":(0, 100),
@@ -77,6 +89,9 @@ cfg_ifs = {
             "50pct":(0, 100),
             "75pct":(0, 100),
             "90pct":(0, 100),
+            "max-min":(0, 100),
+            "90-10pct":(0, 100),
+            "75-25pct":(0, 100),
             },
         "wspd":{
             "default":(0, 50),
@@ -89,11 +104,21 @@ cfg_ifs = {
             "50pct":(0, 50),
             "75pct":(0, 50),
             "90pct":(0, 50),
+            "max-min":(0, 50),
+            "90-10pct":(0, 50),
+            "75-25pct":(0, 50),
             },
         },
     "norm_res":2048,
     "mask_val":65535,
     "invalid_thresh":1e19,
+
+    "spread_metrics":[
+        "stddev",
+        "max-min",
+        "90-10pct",
+        "75-25pct",
+        ],
 
     ## long labels
     "long_labels_metrics":{
@@ -101,12 +126,15 @@ cfg_ifs = {
         "min":"Minimum",
         "max":"Maximum",
         "mean":"Average",
-        "stddev":"Standard Deviation",
-        "10pct":"10th Percentile",
-        "25pct":"25th Percentile",
+        "stddev":"Std Dev",
+        "10pct":"10th Pctl",
+        "25pct":"25th Pctl",
         "50pct":"Median",
-        "75pct":"75th Percentile",
-        "90pct":"90th Percentile",
+        "75pct":"75th Pctl",
+        "90pct":"90th Pctl",
+        "max-min":"Max-Min",
+        "90-10pct":"90-10 Pctl",
+        "75-25pct":"75-25 Pctl"
         },
 
     "long_labels_feats":{
@@ -132,18 +160,27 @@ cfg_ifs = {
 ## colormaps with which to generate lookup tables via matplotilb.
 cfg_cmap = {
     "options":[
-        "nipy_spectral",
-        "magma",
         "viridis",
-        "gnuplot",
+        "viridis_r",
+        #"gnuplot",
         "gist_rainbow",
+        "gist_earth",
+        "gist_earth_r",
         "coolwarm",
         "coolwarm_r",
-        "cmr.chroma",
-        "cmr.pride",
+        #"cmr.chroma",
+        #"cmr.pride",
         "cmr.rainforest",
+        "cmr.rainforest_r",
+        "nipy_spectral",
+        "magma",
         ],
     "resolution":256,
+    "defaults":{
+        "temperature_2m":"coolwarm",
+        "relative_humidity_2m":"gist_earth_r",
+        "wspd":"magma",
+        },
     }
 
 

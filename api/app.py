@@ -43,6 +43,7 @@ meta_ifs = {
     "feats":zgrp_ifs.attrs["feats"],
     ## ensemble aggregation metrics
     "metrics":zgrp_ifs.attrs["metrics"],
+    "spread_metrics":zgrp_ifs.attrs["spread_metrics"],
 
     ## geometry (hard coding in javascript for now)
     #"bounds_lat":zgrp_ifs.attrs["latitude_bounds"],

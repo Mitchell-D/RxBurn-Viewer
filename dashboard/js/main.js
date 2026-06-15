@@ -21,8 +21,13 @@ const MAP = Map;
 const state = {
     dom:{
         feat_menu:"menu_container_feat",
-        metric_menu:"menu_container_metric",
+        metric_menu_value:"menu_container_metric_value",
+        metric_menu_spread:"menu_container_metric_spread",
+        cmap_dropdown:"dd_cmap_name",
+        cmap_dropdown_button:"dd_button_cmap",
+
         button_template_id:"menu_button_temp",
+        dropdown_template_id:"dropdown_temp",
 
         cmap_slider_container_id:"cmap_slider_row",
         threshold_slider_container_id:"threshold_slider_row",
@@ -36,6 +41,7 @@ const state = {
         cmax:null, // minimum value bound for color map
         vmin:null, // minimum value bound for threshold
         vmax:null, // minimum value bound for threshold
+        cmap:null,
         //pgroup:"fulldomain",
         //poly:"fulldomain_0",
         //t0:null,
@@ -43,7 +49,7 @@ const state = {
     },
     urls:{
         menu:"/api/menu/ens/ifs",
-        cmap:"/api/cmaps",
+        cmaps:"/api/cmaps",
     },
     labels:{
         feats:null,
@@ -94,7 +100,7 @@ const map_started = dom_ready
     //.then(() => MAP.set_active_pgroup({ pgroup:state.sel.pgroup }));
 
 // load the IFS menu and
-const menu_fetched = fetch(state.urls.menu)
+const menu_forms_initialized = fetch(state.urls.menu)
     .then(r => r.json())
     .then(r => {
         console.log(r);
@@ -127,8 +133,15 @@ const menu_fetched = fetch(state.urls.menu)
         for (const l of state.options.feats) {
             metric_menu_labels[l] = state.options.metrics;
         }
+        // condition the container for buttons on whether or not they
+        // are spread metrics
+        const metric_container_ids = {}
+        for (const l of state.options.metrics) {
+            metric_container_ids[l] = r["spread_metrics"].includes(l)
+                ? state.dom.metric_menu_spread : state.dom.metric_menu_value;
+        }
         MENU_METRIC = new Menu({
-            container_id:state.dom.metric_menu,
+            container_id:metric_container_ids,
             button_template_id:state.dom.button_template_id,
             labels:metric_menu_labels,
             defaults:state.sel.metric,
@@ -140,6 +153,7 @@ const menu_fetched = fetch(state.urls.menu)
 
         // subscribe the metric menu to update based on the feat menu
         MENU_FEAT.subscribe((new_feat) => {
+            console.log("new feat", new_feat);
             // main state needs to be the first to update so that subscribers
             // to the metric menu can be provided an up-to-date feat state
             state.sel.feat = new_feat;
@@ -164,6 +178,7 @@ const menu_fetched = fetch(state.urls.menu)
 
         // set subscriptions to menu (and by extension feat) changes
         MENU_METRIC.subscribe((new_metric) => {
+            console.log("new metric", new_metric);
             state.sel.metric = new_metric;
             // new metric runs any time a new feature is selected too since
             // it is conditioned on the feat menu.
@@ -189,6 +204,44 @@ const menu_fetched = fetch(state.urls.menu)
 
         // initialize the playback/buffer forms
     });
+
+// wait until menu forms initialized to set cmaps in order to capture the
+// state of (feat, metric)
+const cmap_forms_initialized = Promise.all([
+    fetch(state.urls.cmaps).then(r => r.json()),
+    menu_forms_initialized,
+]).then((v) => {
+    const menu_cmaps = v[0];
+    const cmap_options = {};
+    for (const fk of state.options.feats) {
+        cmap_options[fk] = {};
+        for (const mk of state.options.metrics) {
+            cmap_options[fk][mk] = menu_cmaps["options"];
+
+        }
+    }
+    MENU_CMAP = new Menu({
+        container_id:state.dom.cmap_dropdown,
+        button_template_id:state.dom.dropdown_template_id,
+        labels:cmap_options,
+        defaults:menu_cmaps["defaults"],
+        initial_conditions:[state.sel.feat, state.sel.metric],
+        long_labels:{},
+        class_active:"btn-primary",
+        class_inactive:"btn-secondary",
+    });
+    MENU_METRIC.subscribe((new_metric) => {
+        MENU_CMAP.update([state.sel.feat, state.sel.metric]);
+    });
+    const cmap_btn = document.getElementById(state.dom.cmap_dropdown_button);
+    cmap_btn.textContent = MENU_CMAP.current_value;
+    MENU_CMAP.subscribe((new_cmap) => {
+        state.sel.cmap = new_cmap;
+        console.log("new cmap", new_cmap);
+        console.log();
+        cmap_btn.textContent = new_cmap;
+    });
+});
 
 /*
 const cmaps_fetched = fetch(state.urls.cmap)

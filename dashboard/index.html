@@ -46,11 +46,31 @@
             <p class="menu-section-title">Ensemble Metric</p>
           </div>
           <div class="row">
-            <div class="col menu-button-column" id="menu_container_metric"></div>
+            <div class="col">
+              <div class="row">
+                <div class="col menu-button-column text-center">
+                  <p style="margin-bottom:0rem;">Value</p>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col menu-button-column" id="menu_container_metric_value"></div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="row">
+                <div class="col menu-button-column text-center">
+                  <p style="margin-bottom:0rem;">Spread</p>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col menu-button-column" id="menu_container_metric_spread"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
+      <!--
       <div class="row" id="menu_pgroup_row">
         <hr class="menu-rule"/>
         <div class="col">
@@ -62,6 +82,8 @@
           </div>
         </div>
       </div>
+      -->
+
       <div class="row" id="menu_cmap_row">
         <hr class="menu-rule"/>
         <div class="col-md-12">
@@ -69,16 +91,10 @@
             <p class="menu-section-title">Color Map + Bounds</p>
           </div>
 
-          <div class="row dropdown menu-button-container">
-            <button class="btn btn-primary dropdown-toggle dropdown-button menu-button" type="button" id="dd_button_cmap_name" data-bs-toggle="dropdown" aria-expanded="false">
+          <div class="row dropdown">
+            <button class="btn btn-primary dropdown-toggle dropdown-button menu-button" type="button" id="dd_button_cmap" data-bs-toggle="dropdown" aria-expanded="false">
             </button>
             <ul id="dd_cmap_name" class="dropdown-menu" aria-labelledby="dd_button_cmap_name"></ul>
-          </div>
-
-          <div class="row dropdown menu-button-container" style="display:none;">
-            <button class="btn btn-primary dropdown-toggle dropdown-button menu-button" type="button" id="dd_button_cmap_res" data-bs-toggle="dropdown" aria-expanded="false">
-            </button>
-            <ul id="dd_cmap_res" class="dropdown-menu" aria-labelledby="dd_button_cmap_res"></ul>
           </div>
 
           <div class="row" id="cmap_slider_row">
@@ -92,7 +108,7 @@
                 </div>
               </div>
 
-              <div class="row menu-button-container">
+              <div class="row">
                 <div class="slider-track">
                   <div class="slider-range"></div>
                   <div class="slider-handle slider-handle-min"></div>
@@ -102,17 +118,20 @@
 
               <div class="row">
                 <div class="col-md-6 bounds-input-container">
-                  <label for="slider_input_min">Minimum Value</label>
-                  <input class="slider_input_min"></input>
+                  <label for="slider-input-min" style="display:none;">Value Min</label>
+                  <input class="slider-input-min"></input>
                 </div>
                 <div class="col-md-6 bounds-input-container">
-                  <label for="slider_input_max">Maximum Value</label>
-                  <input class="slider_input_max"></input>
+                  <label for="slider-input-max" style="display:none;">Value Max</label>
+                  <input class="slider-input-max"></input>
                 </div>
               </div>
             </div>
-            <div class="col-md-12" id="cmap_menu_container"> </div>
           </div>
+        </div>
+      </div>
+      <div class="row" id="menu_threshold_row">
+        <div class="col-md-12">
           <div class="row" id="threshold_slider_row">
             <div class="slider-container">
               <div class="row" style="display:none;">
@@ -124,7 +143,7 @@
                 </div>
               </div>
 
-              <div class="row menu-button-container">
+              <div class="row">
                 <div class="slider-track">
                   <div class="slider-range"></div>
                   <div class="slider-handle slider-handle-min"></div>
@@ -134,16 +153,15 @@
 
               <div class="row">
                 <div class="col-md-6 bounds-input-container">
-                  <label for="slider_input_min">Minimum Value</label>
-                  <input type="number" class="slider_input_min"></input>
+                  <label for="slider-input-min" style="display:none;">Threshold Min</label>
+                  <input class="slider-input-min"></input>
                 </div>
                 <div class="col-md-6 bounds-input-container">
-                  <label for="slider_input_max">Maximum Value</label>
-                  <input type="number" class="slider_input_max"></input>
+                  <label for="slider-input-max" style="display:none;">Threshold Max</label>
+                  <input class="slider-input-max"></input>
                 </div>
               </div>
             </div>
-            <div class="col-md-12" id="cmap_menu_container"> </div>
           </div>
         </div>
         <!--<hr class="menu-rule"/>-->
@@ -233,7 +251,11 @@
 
     <!-- general drop-down menu template -->
 
-    <template id="menu_dropdown_temp"><li><a class="dropdown-item" href="#"></a></li></template>
+    <template id="dropdown_temp">
+      <div class="menu-button-container">
+        <li><button class="dropdown-item" href="#"></button></li>
+      </div>
+    </template>
 
     <template id="split_dropdown_temp">
       <li>

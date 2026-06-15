@@ -39,7 +39,8 @@ if __name__=="__main__":
 
     metrics_spatial = [
         "min", "max", "mean", "stddev",
-        "10pct", "25pct", "50pct", "75pct", "90pct"
+        "10pct", "25pct", "50pct", "75pct", "90pct",
+        "max-min", "90-10pct", "75-25pct",
         ]
 
     ## Identify ifs files with init times in the requested range.
@@ -170,16 +171,26 @@ if __name__=="__main__":
             ## reduce along the ensemble axis to (horizon, lat, lon)
             ## stack to (metric, horizon, lat, lon)
             ## store shape: (feat, metric, horizon, lat, lon)
+            xmin = np.amin(farr,axis=1)
+            xmax = np.amax(farr,axis=1)
+            p10 = np.percentile(farr,10,method=pim,axis=1)
+            p25 = np.percentile(farr,25,method=pim,axis=1)
+            p75 = np.percentile(farr,75,method=pim,axis=1)
+            p90 = np.percentile(farr,90,method=pim,axis=1)
+
             zgrp_ifs_spatial[tstr][fix] = np.stack([
-                rescale(np.amin(farr,axis=1),fk,"min"),
-                rescale(np.amax(farr,axis=1),fk,"max"),
+                rescale(xmin,fk,"min"),
+                rescale(xmax,fk,"max"),
                 rescale(np.average(farr,axis=1),fk,"mean"),
                 rescale(np.std(farr,axis=1),fk,"stddev"),
-                rescale(np.percentile(farr,10,method=pim,axis=1),fk,"10pct"),
-                rescale(np.percentile(farr,25,method=pim,axis=1),fk,"25pct"),
+                rescale(p10,fk,"10pct"),
+                rescale(p25,fk,"25pct"),
                 rescale(np.percentile(farr,50,method=pim,axis=1),fk,"50pct"),
-                rescale(np.percentile(farr,75,method=pim,axis=1),fk,"75pct"),
-                rescale(np.percentile(farr,90,method=pim,axis=1),fk,"90pct"),
+                rescale(p75,fk,"75pct"),
+                rescale(p90,fk,"90pct"),
+                rescale(xmax-xmin,fk,"max-min"),
+                rescale(p90-p10,fk,"90-10pct"),
+                rescale(p75-p25,fk,"75-25pct"),
                 ], axis=0)
         ds.close()
 
@@ -221,6 +232,8 @@ if __name__=="__main__":
         "norm_res":cfg_ifs["norm_res"],
         "mask_val":cfg_ifs["mask_val"],
         "cmap_default_bounds":cfg_ifs["cmap_default_bounds"],
+
+        "spread_metrics":cfg_ifs["spread_metrics"],
 
         ## labels
         "long_labels_feats":cfg_ifs["long_labels_feats"],

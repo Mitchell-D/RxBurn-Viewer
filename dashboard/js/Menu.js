@@ -31,7 +31,16 @@ export class Menu {
         class_active="btn-primary",
         class_inactive="btn-secondary",
     }){
-        this.container = document.getElementById(container_id);
+        if (typeof container_id === "string") {
+            this.container = document.getElementById(container_id);
+            this.conditional_container = false;
+        } else {
+            this.container = {};
+            for (const k in container_id) {
+                this.container[k] = document.getElementById(container_id[k]);
+            }
+            this.conditional_container = true;
+        }
         this.button_template = document.getElementById(button_template_id);
         this.class_active = class_active;
         this.class_inactive = class_inactive;
@@ -39,7 +48,7 @@ export class Menu {
         this.#state.menu_depth = object_depth(labels);
         this.labels = labels;
         this.long_labels = long_labels;
-
+        this.buttons = {}
 
         if (!(initial_conditions.length == this.#state.menu_depth)) {
             throw new Error("Menu depth doesn't match initial_conditions");
@@ -73,6 +82,7 @@ export class Menu {
     }
 
     update(conditions=[]) {
+        console.log("new conditions:", conditions);
         if (!conditions.length == this.#state.menu_depth) {
             throw new Error("Menu depth doesn't match conditions",
                 conditions, this.#state.menu_depth);
@@ -85,13 +95,33 @@ export class Menu {
     }
 
     _set_menu(label_array, selected) {
-        this.container.replaceChildren();
-        const buttons = [];
+        // remove buttons if their value is no longer in the label array
+        if (!this.conditional_container) {
+            for (const c of this.container.children) {
+                const tmp_btn = c.querySelector("button");
+                if (!label_array.includes(tmp_btn.value)) {
+                    delete this.buttons[tmp_btn.value];
+                    c.remove();
+                }
+            }
+        } else {
+            for (const k in this.container) {
+                for(const c of this.container[k].children) {
+                    const tmp_btn = c.querySelector("button");
+                    if (!label_array.includes(tmp_btn.value)) {
+                        delete this.buttons[tmp_btn.value];
+                        c.remove();
+                    }
+                }
+            }
+        }
+
         for (const k of label_array) {
+            if (this.buttons.hasOwnProperty(k)) continue;
             // grab the button template
             const tbc = this.button_template.content.querySelector(
                 ".menu-button-container").cloneNode(true);
-            const tb = tbc.querySelector(":scope > button");
+            const tb = tbc.querySelector("button");
 
             // set the button text and key
             if (this.long_labels.hasOwnProperty(k)) {
@@ -100,16 +130,16 @@ export class Menu {
                 tb.textContent = k;
             }
             tb.value = k;
+            this.buttons[k] = tb;
 
             // add a click callback to swap the state and notify subscribers
             const class_scope = this;
             tb.addEventListener("click", function() {
-                if (this.classList.contains(class_scope.class_active)) {
-                    return;
-                }
-                for (const el of class_scope.container.children) {
+                //if (this.classList.contains(class_scope.class_active)) return;
+                for (const bix in class_scope.buttons) {
+                    const btn = class_scope.buttons[bix];
                     //const btn = el.querySelector(":scope > button");
-                    const btn = el.querySelector(":scope > button");
+                    //const btn = el.querySelector(":scope > button");
                     // swap button to active if its feature value matches
                     if (this.value==btn.value) {
                         this.classList.remove(class_scope.class_inactive);
@@ -131,13 +161,16 @@ export class Menu {
                 class_scope._notify_subscribers();
             });
 
-            // add the button to the container
-            this.container.append(tbc);
+            // add the button to its container
+            const tmp_cont = this.conditional_container
+                ? this.container[k] : this.container;
+            tmp_cont.append(tbc);
 
-            // simulate clicking this button if it is the selected one,
-            // thereby notifying any subscribers of the new value
-            if (k==selected) { tb.click(); }
+            //if (k==selected) { tb.click(); }
         }
+        // simulate clicking this button if it is the selected one,
+        // thereby notifying any subscribers of the new value
+        this.buttons[selected].click();
     }
 
     subscribe(callback)  {

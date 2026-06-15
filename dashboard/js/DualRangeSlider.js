@@ -41,8 +41,8 @@ export class DualRangeSlider {
         this.max_handle = this.container.querySelector(".slider-handle-max");
         this.label_min = this.container.querySelector(".slider-label-min");
         this.label_max = this.container.querySelector(".slider-label-max");
-        this.min_input = this.container.querySelector(".slider_input_min");
-        this.max_input = this.container.querySelector(".slider_input_max");
+        this.min_input = this.container.querySelector(".slider-input-min");
+        this.max_input = this.container.querySelector(".slider-input-max");
 
         this.is_dragging = false;
         this.active_handle = null;
@@ -196,7 +196,6 @@ export class DualRangeSlider {
         } else {
             new_max = this.bin_to_value(Math.min(v, this.resolution - 1));
         }
-        console.log(new_min, new_max);
 
         this.update({
             min_sel:new_min,
@@ -310,8 +309,6 @@ export class DualRangeSlider {
         } else {
             this.max_bin_bnd = this.value_to_bin(this.max_val_bnd);
         }
-
-        console.log(this.min_val_bnd, this.max_val_bnd);
 
         // update the bound settings for this conditions state
         this.set_bound(

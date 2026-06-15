@@ -223,11 +223,14 @@ html {
     height: 100%;
 }
 
-#slider_input_min{
+.slider-input-min{
     width:100%;
 }
-#slider_input_max{
+.slider-input-max{
     width:100%;
+}
+.bounds-input-container{
+    padding:0;
 }
 
 .menu-rule {
