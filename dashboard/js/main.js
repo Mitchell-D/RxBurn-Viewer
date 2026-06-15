@@ -1,7 +1,8 @@
 import { Map } from "./map.js";
 //import { MenuDate } from "./menu_date.js";
 //import { MenuFeat } from "./menu_feat.js";
-import { Menu } from "./menu.js";
+import { Menu } from "./Menu.js";
+import { DualRangeSlider } from "./DualRangeSlider.js";
 //import { MenuPoly } from "./menu_pgroup.js";
 //import { MenuRaster } from "./menu_raster.js";
 //import { ColorMap } from "./color_map.js";
@@ -22,6 +23,9 @@ const state = {
         feat_menu:"menu_container_feat",
         metric_menu:"menu_container_metric",
         button_template_id:"menu_button_temp",
+
+        cmap_slider_container_id:"cmap_slider_row",
+        threshold_slider_container_id:"threshold_slider_row",
         //pgroup_menu:"menu_container_pgroup",
         //date_picker:"buffer_date_range",
     },
@@ -65,8 +69,12 @@ const dom_ready = new Promise(resolve => {
   }
 });
 
-let FMENU = null;
-let MMENU = null;
+let MENU_ITIME = null; // init time menu
+let MENU_FEAT = null; // feature button menu
+let MENU_METRIC = null; // metric button menu
+let MENU_CSLIDER = null; // color map slider forms
+let MENU_TSLIDER = null; // threshold slider forms
+let MENU_CMAP = null; // color map name forms
 
 // initialize the map
 const map_started = dom_ready
@@ -96,39 +104,78 @@ const menu_fetched = fetch(state.urls.menu)
         state.options.itimes = r["init_times"];
         state.options.htimes = r["horizon_times"];
 
-        FMENU = new Menu({
+        // initialize feature menu
+        MENU_FEAT = new Menu({
             container_id:state.dom.feat_menu,
             button_template_id:state.dom.button_template_id,
             labels:state.options.feats,
             defaults:state.sel.feat,
-            conditions:[],
+            initial_conditions:[],
             long_labels:state.labels.feats,
             class_active:"btn-primary",
             class_inactive:"btn-secondary",
         });
 
+        // initialize metric menu
         // for now, assume all feats have all metrics, though the menu
         // class is general enough to handle complex nesting
         const metric_menu_labels = {}
         for (const l of state.options.feats) {
             metric_menu_labels[l] = state.options.metrics;
         }
-        MMENU = new Menu({
+        MENU_METRIC = new Menu({
             container_id:state.dom.metric_menu,
             button_template_id:state.dom.button_template_id,
             labels:metric_menu_labels,
             defaults:state.sel.metric,
-            conditions:[state.sel.feat],
+            initial_conditions:[state.sel.feat],
             long_labels:state.labels.metrics,
             class_active:"btn-primary",
             class_inactive:"btn-secondary",
         });
 
-        FMENU.subscribe((new_feat) => {
-            MMENU.update([new_feat]);
+        // subscribe the metric menu to update based on the feat menu
+        MENU_FEAT.subscribe((new_feat) => {
+            // main state needs to be the first to update so that subscribers
+            // to the metric menu can be provided an up-to-date feat state
+            state.sel.feat = new_feat;
+            MENU_METRIC.update([new_feat]);
         });
+
+        // initialize the color map slider menu
+        MENU_CSLIDER = new DualRangeSlider({
+            target_container_id:state.dom.cmap_slider_container_id,
+            extrema:r["norm_bounds"],
+            defaults:r["cmap_default_bounds"],
+            initial_conditions:[state.sel.feat, state.sel.metric],
+        });
+
+        // initialize the threshold slider menu
+        MENU_TSLIDER = new DualRangeSlider({
+            target_container_id:state.dom.threshold_slider_container_id,
+            extrema:r["norm_bounds"],
+            defaults:structuredClone(r["norm_bounds"]),
+            initial_conditions:[state.sel.feat, state.sel.metric],
+        });
+
+        MENU_METRIC.subscribe((new_metric) => {
+            state.sel.metric = new_metric;
+            // new metric runs any time a new feature is selected too since
+            // it is conditioned on the feat menu.
+            MENU_CSLIDER.set_new_conditions([state.sel.feat,state.sel.metric]);
+            //MENU_TSLIDER.set_new_conditions([state.sel.feat,state.sel.metric]);
+        });
+
+        // initialize the threshold slider menu
+
+        // initialize the color map name forms
+
+        // initialize the time/date selection forms
+
+        // initialize the playback/buffer forms
     });
 
+/*
 const cmaps_fetched = fetch(state.urls.cmap)
     .then(r => r.json())
     .then(j => {
@@ -198,6 +245,7 @@ const menu_populated = Promise.all([menu_fetched, dom_ready])
             tf:state.sel.tf,
         });
 
+
     });
 
 const forms_active = menu_populated.then(() => {
@@ -238,3 +286,4 @@ const render_ready = Promise.all([cmaps_fetched, raster_started])
         RMENU.subscribe((array) => { COLOR.apply_cmap(array) });
         COLOR.subscribe((image) => { MAP.render(image) });
     });
+    */

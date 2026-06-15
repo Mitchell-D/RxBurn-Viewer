@@ -220,6 +220,7 @@ if __name__=="__main__":
         "norm_bounds":cfg_ifs["norm_bounds"],
         "norm_res":cfg_ifs["norm_res"],
         "mask_val":cfg_ifs["mask_val"],
+        "cmap_default_bounds":cfg_ifs["cmap_default_bounds"],
 
         ## labels
         "long_labels_feats":cfg_ifs["long_labels_feats"],

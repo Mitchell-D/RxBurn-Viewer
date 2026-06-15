@@ -82,8 +82,7 @@
           </div>
 
           <div class="row" id="cmap_slider_row">
-            <div class="col-md-12" id="cmap_menu_container">
-
+            <div class="slider-container">
               <div class="row" style="display:none;">
                 <div class="col-md-6 slider-label-container">
                     Min: <span class="slider-label slider-label-min"></span>
@@ -104,15 +103,47 @@
               <div class="row">
                 <div class="col-md-6 bounds-input-container">
                   <label for="slider_input_min">Minimum Value</label>
-                  <input type="number" id="slider_input_min"></input>
+                  <input type="number" class="slider_input_min"></input>
                 </div>
                 <div class="col-md-6 bounds-input-container">
                   <label for="slider_input_max">Maximum Value</label>
-                  <input type="number" id="slider_input_max"></input>
+                  <input type="number" class="slider_input_max"></input>
                 </div>
               </div>
             </div>
+            <div class="col-md-12" id="cmap_menu_container"> </div>
+          </div>
+          <div class="row" id="threshold_slider_row">
+            <div class="slider-container">
+              <div class="row" style="display:none;">
+                <div class="col-md-6 slider-label-container">
+                    Min: <span class="slider-label slider-label-min"></span>
+                </div>
+                <div class="col-md-6 slider-label-container">
+                    Max: <span class="slider-label slider-label-max"></span>
+                </div>
+              </div>
 
+              <div class="row menu-button-container">
+                <div class="slider-track">
+                  <div class="slider-range"></div>
+                  <div class="slider-handle slider-handle-min"></div>
+                  <div class="slider-handle slider-handle-max"></div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6 bounds-input-container">
+                  <label for="slider_input_min">Minimum Value</label>
+                  <input type="number" class="slider_input_min"></input>
+                </div>
+                <div class="col-md-6 bounds-input-container">
+                  <label for="slider_input_max">Maximum Value</label>
+                  <input type="number" class="slider_input_max"></input>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-12" id="cmap_menu_container"> </div>
           </div>
         </div>
         <!--<hr class="menu-rule"/>-->
@@ -231,6 +262,38 @@
         <p id="tooltip_location" class="tooltip-text"></p>
         <p id="tooltip_value" class="tooltip-text"></p>
         <button id="tooltip_button_timeseries" class="btn tooltip-text">Generate Time Series</button>
+      </div>
+    </template>
+
+    <template id="dual_slider_template">
+      <div class="slider-container">
+        <div class="row" style="display:none;">
+          <div class="col-md-6 slider-label-container">
+              Min: <span class="slider-label slider-label-min"></span>
+          </div>
+          <div class="col-md-6 slider-label-container">
+              Max: <span class="slider-label slider-label-max"></span>
+          </div>
+        </div>
+
+        <div class="row menu-button-container">
+          <div class="slider-track">
+            <div class="slider-range"></div>
+            <div class="slider-handle slider-handle-min"></div>
+            <div class="slider-handle slider-handle-max"></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 bounds-input-container">
+            <label for="slider_input_min">Minimum Value</label>
+            <input type="number" class="slider_input_min"></input>
+          </div>
+          <div class="col-md-6 bounds-input-container">
+            <label for="slider_input_max">Maximum Value</label>
+            <input type="number" class="slider_input_max"></input>
+          </div>
+        </div>
       </div>
     </template>
 

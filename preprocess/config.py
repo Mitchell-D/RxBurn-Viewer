@@ -14,7 +14,45 @@ cfg_ifs = {
     "temporal_chunks":{"latitude":1, "longitude":1},
     "spatial_chunks":{"lead_time":1, "feat":1},
 
-    ## normalization rules
+    ## normalization ruldefault_bounds_cmapes
+    "cmap_default_bounds":{
+        "temperature_2m":{
+            "default":(-50, 50),
+            "min":(-50, 50),
+            "max":(-50, 50),
+            "mean":(-50, 50),
+            "stddev":(0,  20),
+            "10pct":(-50, 50),
+            "25pct":(-50, 50),
+            "50pct":(-50, 50),
+            "75pct":(-50, 50),
+            "90pct":(-50, 50),
+            },
+        "relative_humidity_2m":{
+            "default":(0, 100),
+            "min":(0, 100),
+            "max":(0, 100),
+            "mean":(0, 100),
+            "stddev":(0, 50),
+            "10pct":(0, 100),
+            "25pct":(0, 100),
+            "50pct":(0, 100),
+            "75pct":(0, 100),
+            "90pct":(0, 100),
+            },
+        "wspd":{
+            "default":(0, 50),
+            "min":(0, 50),
+            "max":(0, 50),
+            "mean":(0, 50),
+            "stddev":(0, 50),
+            "10pct":(0, 50),
+            "25pct":(0, 50),
+            "50pct":(0, 50),
+            "75pct":(0, 50),
+            "90pct":(0, 50),
+            },
+        },
     "norm_bounds":{
         "temperature_2m":{
             "default":(-50, 50),

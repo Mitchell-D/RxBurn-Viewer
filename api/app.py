@@ -58,6 +58,7 @@ meta_ifs = {
     "norm_bounds":zgrp_ifs.attrs["norm_bounds"],
     "norm_res":zgrp_ifs.attrs["norm_res"],
     "mask_val":zgrp_ifs.attrs["mask_val"],
+    "cmap_default_bounds":zgrp_ifs.attrs["cmap_default_bounds"],
 
     ## labels
     "long_labels_metrics":zgrp_ifs.attrs["long_labels_metrics"],
