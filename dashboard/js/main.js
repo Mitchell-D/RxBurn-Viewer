@@ -32,6 +32,10 @@ const state = {
     sel:{
         feat:"temperature_2m",
         metric:"mean",
+        cmin:null, // minimum value bound for color map
+        cmax:null, // minimum value bound for color map
+        vmin:null, // minimum value bound for threshold
+        vmax:null, // minimum value bound for threshold
         //pgroup:"fulldomain",
         //poly:"fulldomain_0",
         //t0:null,
@@ -158,15 +162,26 @@ const menu_fetched = fetch(state.urls.menu)
             initial_conditions:[state.sel.feat, state.sel.metric],
         });
 
+        // set subscriptions to menu (and by extension feat) changes
         MENU_METRIC.subscribe((new_metric) => {
             state.sel.metric = new_metric;
             // new metric runs any time a new feature is selected too since
             // it is conditioned on the feat menu.
             MENU_CSLIDER.set_new_conditions([state.sel.feat,state.sel.metric]);
-            //MENU_TSLIDER.set_new_conditions([state.sel.feat,state.sel.metric]);
+            MENU_TSLIDER.set_new_conditions([state.sel.feat,state.sel.metric]);
         });
 
-        // initialize the threshold slider menu
+        // set subscriptions to color map bounds changes
+        MENU_CSLIDER.subscribe((cmin,cmax) => {
+            state.sel.cmin = cmin;
+            state.sel.cmax = cmax;
+        });
+
+        // set subscriptions to threshold bounds changes
+        MENU_TSLIDER.subscribe((vmin,vmax) => {
+            state.sel.vmin = vmin;
+            state.sel.vmax = vmax;
+        });
 
         // initialize the color map name forms
 
