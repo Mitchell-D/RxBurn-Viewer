@@ -4,6 +4,176 @@ as well as directly dumped to a JSON for the frontend to request, and
 imported by the backend api.
 """
 
+cfg_gefs = {
+    "labels":{
+        "feats":["temp", "rh", "wspd"],
+        },
+    "norm_bounds":{
+        "temperature_2m":{
+            "default":(-50, 50),
+            "min":(-50, 50),
+            "max":(-50, 50),
+            "mean":(-50, 50),
+            "stddev":(0,  50),
+            "10pct":(-50, 50),
+            "25pct":(-50, 50),
+            "50pct":(-50, 50),
+            "75pct":(-50, 50),
+            "90pct":(-50, 50),
+            "max-min":(0, 100),
+            "90-10pct":(0, 100),
+            "75-25pct":(0, 100),
+            },
+        "relative_humidity_2m":{
+            "default":(0, 100),
+            "min":(0, 100),
+            "max":(0, 100),
+            "mean":(0, 100),
+            "stddev":(0, 50),
+            "10pct":(0, 100),
+            "25pct":(0, 100),
+            "50pct":(0, 100),
+            "75pct":(0, 100),
+            "90pct":(0, 100),
+            "max-min":(0, 100),
+            "90-10pct":(0, 100),
+            "75-25pct":(0, 100),
+            },
+        "wspd":{
+            "default":(0, 50),
+            "min":(0, 50),
+            "max":(0, 50),
+            "mean":(0, 50),
+            "stddev":(0, 50),
+            "10pct":(0, 50),
+            "25pct":(0, 50),
+            "50pct":(0, 50),
+            "75pct":(0, 50),
+            "90pct":(0, 50),
+            "max-min":(0, 50),
+            "90-10pct":(0, 50),
+            "75-25pct":(0, 50),
+            },
+        },
+    "norm_res":8192,
+    "mask_val":65535,
+    "invalid_thresh":1e19,
+
+    ## normalization ruldefault_bounds_cmapes
+    "cmap_default_bounds":{
+        "temperature_2m":{
+            "default":(-50, 50),
+            "min":(-50, 50),
+            "max":(-50, 50),
+            "mean":(-50, 50),
+            "stddev":(0,  50),
+            "10pct":(-50, 50),
+            "25pct":(-50, 50),
+            "50pct":(-50, 50),
+            "75pct":(-50, 50),
+            "90pct":(-50, 50),
+            "max-min":(0, 100),
+            "90-10pct":(0, 100),
+            "75-25pct":(0, 100),
+            },
+        "relative_humidity_2m":{
+            "default":(0, 100),
+            "min":(0, 100),
+            "max":(0, 100),
+            "mean":(0, 100),
+            "stddev":(0, 50),
+            "10pct":(0, 100),
+            "25pct":(0, 100),
+            "50pct":(0, 100),
+            "75pct":(0, 100),
+            "90pct":(0, 100),
+            "max-min":(0, 100),
+            "90-10pct":(0, 100),
+            "75-25pct":(0, 100),
+            },
+        "wspd":{
+            "default":(0, 50),
+            "min":(0, 50),
+            "max":(0, 50),
+            "mean":(0, 50),
+            "stddev":(0, 50),
+            "10pct":(0, 50),
+            "25pct":(0, 50),
+            "50pct":(0, 50),
+            "75pct":(0, 50),
+            "90pct":(0, 50),
+            "max-min":(0, 50),
+            "90-10pct":(0, 50),
+            "75-25pct":(0, 50),
+            },
+        },
+
+    "spread_metrics":[
+        "stddev",
+        "max-min",
+        "90-10pct",
+        "75-25pct",
+        ],
+
+    ## long labels
+    "long_labels_metrics":{
+        "default":"Value",
+        "min":"Minimum",
+        "max":"Maximum",
+        "mean":"Average",
+        "stddev":"Std Dev",
+        "10pct":"10th Pctl",
+        "25pct":"25th Pctl",
+        "50pct":"Median",
+        "75pct":"75th Pctl",
+        "90pct":"90th Pctl",
+        "max-min":"Max-Min",
+        "90-10pct":"90-10 Pctl",
+        "75-25pct":"75-25 Pctl"
+        },
+
+    "long_labels_feats":{
+        "temperature_2m":"Temperature (2m)",
+        "relative_humidity_2m":"Relative Humidity (2m)",
+        "wspd":"Wind Speed",
+        },
+
+    "long_labels_units":{
+        "temperature_2m":"Celsius",
+        "relative_humidity_2m":"Percent",
+        "wspd":"Miles per Hour",
+        },
+
+    "short_labels_units":{
+        "temperature_2m":"C",
+        "relative_humidity_2m":"%",
+        "wspd":"MPH",
+        },
+
+    }
+
+cfg_gefs_backend = {
+    "crs_out":"EPSG:3857",
+    "get_raw_gefs_feats":[
+        "temperature_2m",
+        "relative_humidity_2m",
+        "wspd",
+        ],
+    "file_feat_mapping":{
+        "temperature_2m":"temp",
+        "relative_humidity_2m":"rh",
+        "wspd":"wspd",
+        },
+    "get_regions":[2,3,4,5,6,8], ## regions to initialize
+    "get_lead_times":80, ## 3-hourly lead times, out to 10 days
+    ## numpy percentile interpolation method for percentiles falling between
+    ## data points (linear, lower, higher, midpoint, or nearest)
+    "pctl_interp_method":"linear",
+    "temporal_chunks":{"latitude":1, "longitude":1},
+    "spatial_chunks":{"lead_time":1, "feat":1},
+    "crs_out":"EPSG:3857",
+    }
+
 ## options only explicitly used by prep_ifs.py
 cfg_ifs = {
     ## netCDF figures to extract

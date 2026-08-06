@@ -82,8 +82,7 @@ export class Menu {
     }
 
     update(conditions=[]) {
-        console.log("new conditions:", conditions);
-        if (!conditions.length == this.#state.menu_depth) {
+        if (!(conditions.length == this.#state.menu_depth)) {
             throw new Error("Menu depth doesn't match conditions",
                 conditions, this.#state.menu_depth);
         }
