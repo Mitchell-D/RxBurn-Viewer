@@ -6,38 +6,49 @@ imported by the backend api.
 
 cfg_gefs = {
     "labels":{
-        "feats":["temp", "rh", "wspd"],
+        "feats":["temp", "rh", "gust", "pamt", "wspd", "vpd"],
+        "metrics":[ ## order enforced by acquire_gefs_forecast!!!
+            "min", "max", "mean", "stddev",
+            "p10", "p25", "p50", "p75", "p90",
+            "max-min", "p90-10", "p75-25",
+            ],
+        "spread_metrics":[
+            "stddev",
+            "max-min",
+            "p90-10",
+            "p75-25",
+            ],
         },
     "norm_bounds":{
-        "temperature_2m":{
+        "temp":{
             "default":(-50, 50),
             "min":(-50, 50),
             "max":(-50, 50),
             "mean":(-50, 50),
             "stddev":(0,  50),
-            "10pct":(-50, 50),
-            "25pct":(-50, 50),
-            "50pct":(-50, 50),
-            "75pct":(-50, 50),
-            "90pct":(-50, 50),
-            "max-min":(0, 100),
-            "90-10pct":(0, 100),
-            "75-25pct":(0, 100),
+            "p10":(-50, 50),
+            "p25":(-50, 50),
+            "p50":(-50, 50),
+            "p75":(-50, 50),
+            "p90":(-50, 50),
+            "max-min":(0, 50),
+            "p90-10":(0, 50),
+            "p75-25":(0, 50),
             },
-        "relative_humidity_2m":{
+        "rh":{
             "default":(0, 100),
             "min":(0, 100),
             "max":(0, 100),
             "mean":(0, 100),
             "stddev":(0, 50),
-            "10pct":(0, 100),
-            "25pct":(0, 100),
-            "50pct":(0, 100),
-            "75pct":(0, 100),
-            "90pct":(0, 100),
+            "p10":(0, 100),
+            "p25":(0, 100),
+            "p50":(0, 100),
+            "p75":(0, 100),
+            "p90":(0, 100),
             "max-min":(0, 100),
-            "90-10pct":(0, 100),
-            "75-25pct":(0, 100),
+            "p90-10":(0, 100),
+            "p75-25":(0, 75),
             },
         "wspd":{
             "default":(0, 50),
@@ -45,14 +56,59 @@ cfg_gefs = {
             "max":(0, 50),
             "mean":(0, 50),
             "stddev":(0, 50),
-            "10pct":(0, 50),
-            "25pct":(0, 50),
-            "50pct":(0, 50),
-            "75pct":(0, 50),
-            "90pct":(0, 50),
+            "p10":(0, 50),
+            "p25":(0, 50),
+            "p50":(0, 50),
+            "p75":(0, 50),
+            "p90":(0, 50),
             "max-min":(0, 50),
-            "90-10pct":(0, 50),
-            "75-25pct":(0, 50),
+            "p90-10":(0, 50),
+            "p75-25":(0, 50),
+            },
+        "pamt":{
+            "default":(0, 500),
+            "min":(0, 500),
+            "max":(0, 500),
+            "mean":(0, 500),
+            "stddev":(0, 500),
+            "p10":(0, 500),
+            "p25":(0, 500),
+            "p50":(0, 500),
+            "p75":(0, 500),
+            "p90":(0, 500),
+            "max-min":(0, 250),
+            "p90-10":(0, 250),
+            "p75-25":(0, 250),
+            },
+        "gust":{
+            "default":(0, 75),
+            "min":(0, 75),
+            "max":(0, 75),
+            "mean":(0, 75),
+            "stddev":(0, 75),
+            "p10":(0, 75),
+            "p25":(0, 75),
+            "p50":(0, 75),
+            "p75":(0, 75),
+            "p90":(0, 75),
+            "max-min":(0, 75),
+            "p90-10":(0, 50),
+            "p75-25":(0, 50),
+            },
+        "vpd":{
+            "default":(0, 12),
+            "min":(0, 12),
+            "max":(0, 12),
+            "mean":(0, 12),
+            "stddev":(0, 12),
+            "p10":(0, 12),
+            "p25":(0, 12),
+            "p50":(0, 12),
+            "p75":(0, 12),
+            "p90":(0, 12),
+            "max-min":(0, 12),
+            "p90-10":(0, 8),
+            "p75-25":(0, 8),
             },
         },
     "norm_res":8192,
@@ -60,36 +116,128 @@ cfg_gefs = {
     "invalid_thresh":1e19,
 
     ## normalization ruldefault_bounds_cmapes
+    "cmap_default_name":{
+        "temp":{
+            "default":"magma",
+            "min":"magma",
+            "max":"magma",
+            "mean":"magma",
+            "stddev":"magma",
+            "p10":"magma",
+            "p25":"magma",
+            "p50":"magma",
+            "p75":"magma",
+            "p90":"magma",
+            "max-min":"magma",
+            "p90-10":"magma",
+            "p75-25":"magma",
+            },
+        "rh":{
+            "default":"magma",
+            "min":"magma",
+            "max":"magma",
+            "mean":"magma",
+            "stddev":"magma",
+            "p10":"magma",
+            "p25":"magma",
+            "p50":"magma",
+            "p75":"magma",
+            "p90":"magma",
+            "max-min":"magma",
+            "p90-10":"magma",
+            "p75-25":"magma",
+            },
+        "wspd":{
+            "default":"magma",
+            "min":"magma",
+            "max":"magma",
+            "mean":"magma",
+            "stddev":"magma",
+            "p10":"magma",
+            "p25":"magma",
+            "p50":"magma",
+            "p75":"magma",
+            "p90":"magma",
+            "max-min":"magma",
+            "p90-10":"magma",
+            "p75-25":"magma",
+            },
+        "pamt":{
+            "default":"magma",
+            "min":"magma",
+            "max":"magma",
+            "mean":"magma",
+            "stddev":"magma",
+            "p10":"magma",
+            "p25":"magma",
+            "p50":"magma",
+            "p75":"magma",
+            "p90":"magma",
+            "max-min":"magma",
+            "p90-10":"magma",
+            "p75-25":"magma",
+            },
+        "gust":{
+            "default":"magma",
+            "min":"magma",
+            "max":"magma",
+            "mean":"magma",
+            "stddev":"magma",
+            "p10":"magma",
+            "p25":"magma",
+            "p50":"magma",
+            "p75":"magma",
+            "p90":"magma",
+            "max-min":"magma",
+            "p90-10":"magma",
+            "p75-25":"magma",
+            },
+        "vpd":{
+            "default":"magma",
+            "min":"magma",
+            "max":"magma",
+            "mean":"magma",
+            "stddev":"magma",
+            "p10":"magma",
+            "p25":"magma",
+            "p50":"magma",
+            "p75":"magma",
+            "p90":"magma",
+            "max-min":"magma",
+            "p90-10":"magma",
+            "p75-25":"magma",
+            },
+        },
     "cmap_default_bounds":{
-        "temperature_2m":{
+        "temp":{
             "default":(-50, 50),
             "min":(-50, 50),
             "max":(-50, 50),
             "mean":(-50, 50),
             "stddev":(0,  50),
-            "10pct":(-50, 50),
-            "25pct":(-50, 50),
-            "50pct":(-50, 50),
-            "75pct":(-50, 50),
-            "90pct":(-50, 50),
+            "p10":(-50, 50),
+            "p25":(-50, 50),
+            "p50":(-50, 50),
+            "p75":(-50, 50),
+            "p90":(-50, 50),
             "max-min":(0, 100),
-            "90-10pct":(0, 100),
-            "75-25pct":(0, 100),
+            "p90-10":(0, 100),
+            "p75-25":(0, 100),
             },
-        "relative_humidity_2m":{
+        "rh":{
             "default":(0, 100),
             "min":(0, 100),
             "max":(0, 100),
             "mean":(0, 100),
             "stddev":(0, 50),
-            "10pct":(0, 100),
-            "25pct":(0, 100),
-            "50pct":(0, 100),
-            "75pct":(0, 100),
-            "90pct":(0, 100),
+            "p10":(0, 100),
+            "p25":(0, 100),
+            "p50":(0, 100),
+            "p75":(0, 100),
+            "p90":(0, 100),
             "max-min":(0, 100),
-            "90-10pct":(0, 100),
-            "75-25pct":(0, 100),
+            "p90-10":(0, 100),
+            "p75-25":(0, 100),
             },
         "wspd":{
             "default":(0, 50),
@@ -97,57 +245,152 @@ cfg_gefs = {
             "max":(0, 50),
             "mean":(0, 50),
             "stddev":(0, 50),
-            "10pct":(0, 50),
-            "25pct":(0, 50),
-            "50pct":(0, 50),
-            "75pct":(0, 50),
-            "90pct":(0, 50),
+            "p10":(0, 50),
+            "p25":(0, 50),
+            "p50":(0, 50),
+            "p75":(0, 50),
+            "p90":(0, 50),
             "max-min":(0, 50),
-            "90-10pct":(0, 50),
-            "75-25pct":(0, 50),
+            "p90-10":(0, 50),
+            "p75-25":(0, 50),
+            },
+        "pamt":{
+            "default":(0, 500),
+            "min":(0, 500),
+            "max":(0, 500),
+            "mean":(0, 500),
+            "stddev":(0, 500),
+            "p10":(0, 500),
+            "p25":(0, 500),
+            "p50":(0, 500),
+            "p75":(0, 500),
+            "p90":(0, 500),
+            "max-min":(0, 250),
+            "p90-10":(0, 250),
+            "p75-25":(0, 250),
+            },
+        "gust":{
+            "default":(0, 75),
+            "min":(0, 75),
+            "max":(0, 75),
+            "mean":(0, 75),
+            "stddev":(0, 75),
+            "p10":(0, 75),
+            "p25":(0, 75),
+            "p50":(0, 75),
+            "p75":(0, 75),
+            "p90":(0, 75),
+            "max-min":(0, 75),
+            "p90-10":(0, 50),
+            "p75-25":(0, 50),
+            },
+        "vpd":{
+            "default":(0, 12),
+            "min":(0, 12),
+            "max":(0, 12),
+            "mean":(0, 12),
+            "stddev":(0, 12),
+            "p10":(0, 12),
+            "p25":(0, 12),
+            "p50":(0, 12),
+            "p75":(0, 12),
+            "p90":(0, 12),
+            "max-min":(0, 12),
+            "p90-10":(0, 8),
+            "p75-25":(0, 8),
             },
         },
 
-    "spread_metrics":[
-        "stddev",
-        "max-min",
-        "90-10pct",
-        "75-25pct",
-        ],
 
     ## long labels
-    "long_labels_metrics":{
-        "default":"Value",
-        "min":"Minimum",
-        "max":"Maximum",
-        "mean":"Average",
-        "stddev":"Std Dev",
-        "10pct":"10th Pctl",
-        "25pct":"25th Pctl",
-        "50pct":"Median",
-        "75pct":"75th Pctl",
-        "90pct":"90th Pctl",
-        "max-min":"Max-Min",
-        "90-10pct":"90-10 Pctl",
-        "75-25pct":"75-25 Pctl"
+    "long_labels":{
+        "metrics":{
+            "default":"Value",
+            "min":"Minimum",
+            "max":"Maximum",
+            "mean":"Average",
+            "stddev":"Std Dev",
+            "p10":"10th Pctl",
+            "p25":"25th Pctl",
+            "p50":"Median",
+            "p75":"75th Pctl",
+            "p90":"90th Pctl",
+            "max-min":"Max-Min",
+            "p90-10":"90-10 Pctl",
+            "p75-25":"75-25 Pctl"
+            },
+        "feats":{
+            "temp":"Temperature (2m)",
+            "rh":"Relative Humidity (2m)",
+            "wspd":"Wind Speed (10m)",
+            "gust":"Wind Gust (10m)",
+            "pamt":"Precipitation (3hr)",
+            "vpd":"Vapor Pressure Deficit (2m)",
+            },
+        "regions":{
+            1:"Region 1",
+            2:"Region 2",
+            3:"Region 3",
+            4:"Region 4",
+            5:"Region 5",
+            6:"Region 6",
+            8:"Region 8",
+            9:"Region 9",
+            10:"Region 10",
+            },
+        "units":{
+            "temp":"Celsius",
+            "rh":"Percent",
+            "wspd":"Meters per Second",
+            "gust":"Meters per Second",
+            "pamt":"Millimeters Over 3 Hours",
+            "vpd":"Millibars"
+            },
         },
 
-    "long_labels_feats":{
-        "temperature_2m":"Temperature (2m)",
-        "relative_humidity_2m":"Relative Humidity (2m)",
-        "wspd":"Wind Speed",
-        },
-
-    "long_labels_units":{
-        "temperature_2m":"Celsius",
-        "relative_humidity_2m":"Percent",
-        "wspd":"Miles per Hour",
-        },
-
-    "short_labels_units":{
-        "temperature_2m":"C",
-        "relative_humidity_2m":"%",
-        "wspd":"MPH",
+    "short_labels":{
+        "metrics":{
+            "default":"",
+            "min":"Min",
+            "max":"Max",
+            "mean":"Avg",
+            "stddev":"Std",
+            "p10":"10 pct",
+            "p25":"25 pct",
+            "p50":"Median",
+            "p75":"75 pct",
+            "p90":"90 pct",
+            "max-min":"Max-Min",
+            "p90-10":"90-10 pct",
+            "p75-25":"75-25 pct"
+            },
+        "feats":{
+            "temp":"T (2m)",
+            "rh":"RH (2m)",
+            "wspd":"WSPD (10m)",
+            "gust":"Gust (10m)",
+            "pamt":"Precip (3hr)",
+            "vpd":"VPD (2m)",
+            },
+        "regions":{
+            1:"R1",
+            2:"R2",
+            3:"R3",
+            4:"R4",
+            5:"R5",
+            6:"R6",
+            8:"R8",
+            9:"R9",
+            10:"R10",
+            },
+        "units":{
+            "temp":"C",
+            "rh":"%",
+            "wspd":"m/s",
+            "gust":"m/s",
+            "pamt":"mm",
+            "vpd":"mb",
+            },
         },
 
     }
@@ -155,177 +398,40 @@ cfg_gefs = {
 cfg_gefs_backend = {
     "crs_out":"EPSG:3857",
     "get_raw_gefs_feats":[
-        "temperature_2m",
-        "relative_humidity_2m",
-        "wspd",
+        "temperature_2m", ## C
+        "relative_humidity_2m", ## %
+        "wind_u_10m", ## m s-1
+        "wind_v_10m", ## m s-1
+        "wind_gust_surface", ## m s-1
+        "precipitation_surface" ## kg m-2 S-1
         ],
     "file_feat_mapping":{
         "temperature_2m":"temp",
         "relative_humidity_2m":"rh",
-        "wspd":"wspd",
+        "wind_gust_surface":"gust",
+        "precipitation_surface":"prate",
         },
-    "get_regions":[2,3,4,5,6,8], ## regions to initialize
+    "get_regions":[2,3,4,5,6,8], ## usfs admin regions to acquire
     "get_lead_times":80, ## 3-hourly lead times, out to 10 days
     ## numpy percentile interpolation method for percentiles falling between
     ## data points (linear, lower, higher, midpoint, or nearest)
     "pctl_interp_method":"linear",
-    "temporal_chunks":{"latitude":1, "longitude":1},
-    "spatial_chunks":{"lead_time":1, "feat":1},
+    ## temporal array: (feat, ensemble, time, lat, lon)
+    "temporal_chunks":(1,31,80,5,5), ## about 124 KB
+    "temporal_shards":(
+        len(cfg_gefs["labels"]["feats"]),
+        31, 80, 500, 500
+        ),
+    ## spatial array: (feat, metric, time, lat, lon)
+    "spatial_chunks":(1,1,80,50,50), ## about 400 KB
+    "spatial_shards":(
+        len(cfg_gefs["labels"]["feats"]),
+        len(cfg_gefs["labels"]["metrics"]),
+        80, 500, 500
+        ),
     "crs_out":"EPSG:3857",
+    "geojson_precision":5, ## floating point decimal values stored
     }
-
-## options only explicitly used by prep_ifs.py
-cfg_ifs = {
-    ## netCDF figures to extract
-    "get_raw_ifs_feats":["temperature_2m", "relative_humidity_2m", "wspd"],
-    ## numpy percentile interpolation method for percentiles falling between
-    ## data points (linear, lower, higher, midpoint, or nearest)
-    "pctl_interp_method":"linear",
-    "temporal_chunks":{"latitude":1, "longitude":1},
-    "spatial_chunks":{"lead_time":1, "feat":1},
-
-    ## normalization ruldefault_bounds_cmapes
-    "cmap_default_bounds":{
-        "temperature_2m":{
-            "default":(-50, 50),
-            "min":(-50, 50),
-            "max":(-50, 50),
-            "mean":(-50, 50),
-            "stddev":(0,  50),
-            "10pct":(-50, 50),
-            "25pct":(-50, 50),
-            "50pct":(-50, 50),
-            "75pct":(-50, 50),
-            "90pct":(-50, 50),
-            "max-min":(0, 100),
-            "90-10pct":(0, 100),
-            "75-25pct":(0, 100),
-            },
-        "relative_humidity_2m":{
-            "default":(0, 100),
-            "min":(0, 100),
-            "max":(0, 100),
-            "mean":(0, 100),
-            "stddev":(0, 50),
-            "10pct":(0, 100),
-            "25pct":(0, 100),
-            "50pct":(0, 100),
-            "75pct":(0, 100),
-            "90pct":(0, 100),
-            "max-min":(0, 100),
-            "90-10pct":(0, 100),
-            "75-25pct":(0, 100),
-            },
-        "wspd":{
-            "default":(0, 50),
-            "min":(0, 50),
-            "max":(0, 50),
-            "mean":(0, 50),
-            "stddev":(0, 50),
-            "10pct":(0, 50),
-            "25pct":(0, 50),
-            "50pct":(0, 50),
-            "75pct":(0, 50),
-            "90pct":(0, 50),
-            "max-min":(0, 50),
-            "90-10pct":(0, 50),
-            "75-25pct":(0, 50),
-            },
-        },
-    "norm_bounds":{
-        "temperature_2m":{
-            "default":(-50, 50),
-            "min":(-50, 50),
-            "max":(-50, 50),
-            "mean":(-50, 50),
-            "stddev":(0,  50),
-            "10pct":(-50, 50),
-            "25pct":(-50, 50),
-            "50pct":(-50, 50),
-            "75pct":(-50, 50),
-            "90pct":(-50, 50),
-            "max-min":(0, 100),
-            "90-10pct":(0, 100),
-            "75-25pct":(0, 100),
-            },
-        "relative_humidity_2m":{
-            "default":(0, 100),
-            "min":(0, 100),
-            "max":(0, 100),
-            "mean":(0, 100),
-            "stddev":(0, 50),
-            "10pct":(0, 100),
-            "25pct":(0, 100),
-            "50pct":(0, 100),
-            "75pct":(0, 100),
-            "90pct":(0, 100),
-            "max-min":(0, 100),
-            "90-10pct":(0, 100),
-            "75-25pct":(0, 100),
-            },
-        "wspd":{
-            "default":(0, 50),
-            "min":(0, 50),
-            "max":(0, 50),
-            "mean":(0, 50),
-            "stddev":(0, 50),
-            "10pct":(0, 50),
-            "25pct":(0, 50),
-            "50pct":(0, 50),
-            "75pct":(0, 50),
-            "90pct":(0, 50),
-            "max-min":(0, 50),
-            "90-10pct":(0, 50),
-            "75-25pct":(0, 50),
-            },
-        },
-    "norm_res":2048,
-    "mask_val":65535,
-    "invalid_thresh":1e19,
-
-    "spread_metrics":[
-        "stddev",
-        "max-min",
-        "90-10pct",
-        "75-25pct",
-        ],
-
-    ## long labels
-    "long_labels_metrics":{
-        "default":"Value",
-        "min":"Minimum",
-        "max":"Maximum",
-        "mean":"Average",
-        "stddev":"Std Dev",
-        "10pct":"10th Pctl",
-        "25pct":"25th Pctl",
-        "50pct":"Median",
-        "75pct":"75th Pctl",
-        "90pct":"90th Pctl",
-        "max-min":"Max-Min",
-        "90-10pct":"90-10 Pctl",
-        "75-25pct":"75-25 Pctl"
-        },
-
-    "long_labels_feats":{
-        "temperature_2m":"Temperature (2m)",
-        "relative_humidity_2m":"Relative Humidity (2m)",
-        "wspd":"Wind Speed",
-        },
-
-    "long_labels_units":{
-        "temperature_2m":"Celsius",
-        "relative_humidity_2m":"Percent",
-        "wspd":"Miles per Hour",
-        },
-
-    "short_labels_units":{
-        "temperature_2m":"C",
-        "relative_humidity_2m":"%",
-        "wspd":"MPH",
-        },
-    }
-
 
 ## colormaps with which to generate lookup tables via matplotilb.
 cfg_cmap = {
@@ -346,188 +452,33 @@ cfg_cmap = {
         "magma",
         ],
     "resolution":256,
-    "defaults":{
-        "temperature_2m":"coolwarm",
-        "relative_humidity_2m":"gist_earth_r",
-        "wspd":"magma",
-        },
     }
 
-
-
-
-
-
-
-"""
-Configuration for frontend line plots. Each entry corresponds to a unique
-plotted line or range.
-
-If 2 valid feat labels are provided to "lines", a range will be plotted between
-those two features.
-
-If one valid feat label is provided to "lines" and "surround" maps to a valid
-feature and, a range will be plotted between that feature minus the "lines"
-feature and that feature plus the "lines" feature.
-
-If one valid feat label is provided and "surround" is not defined, a line
-will be plotted.
-
-dash configuration alternates length for line,gap,line,gap etc:
-
-"dashes":None, ## solid line
-"dashes":"5,5", ## dashed line
-"dashes":"2,3", ## dotted line
-"dashes":"12,3,3,3", ## alternating long and short
-"""
-daily_lines = {
-    "daily mean":{
-        "lines":["daily mean"],
-        "name":"Average",
-        "dashes":None,
-        "color":"#BB4444",
-        "show":True,
-        "zorder":5,
+custom_cmaps = {
+    "classic-9":{
+        "type":"listed",
+        "colors":[
+            "#cc0000", "#ff6600", "#ffa000", "#ebeb50", "#8ce48c",
+            "#00ff00", "#00c800", "#00af00", "#009600",
+            ],
         },
-    "climo mean":{
-        "lines":["climo mean"],
-        "name":"Average",
-        "dashes":None,
-        "color":"#338F50",
-        "show":True,
-        "zorder":4,
+    "classic-5":{
+        "type":"listed",
+        "colors":[
+            "#cc0000", "#ffa000", "#8ce48c", "#00c800", "#009600",
+            ],
         },
-    "daily stddev":{
-        "lines":["daily stddev"],
-        "surround":"daily mean",
-        "name":"Standard Deviation",
-        "dashes":None,
-        "color":"#ba8970",
-        "show":True,
-        "zorder":3,
+    "beach-9":{
+        "type":"listed",
+        "colors":[
+            "#8c510a", "#bf812d", "#dfc27d", "#f6e8c3", "#f5f5f5",
+            "#c7eae5", "#80cdc1", "#35978f", "#01665e",
+            ],
         },
-    "climo stddev":{
-        "lines":["climo stddev"],
-        "surround":"climo mean",
-        "name":"Standard Deviation",
-        "dashes":None,
-        "show":False,
-        "color":"#568f89",
-        "zorder":2,
+    "heat-5":{
+        "type":"listed",
+        "colors":[
+            "#d7191c", "#fdae61", "#ffffbf", "#abd9e9", "#2c7bb6",
+            ],
         },
-    "daily vrange":{
-        "lines":["daily min", "daily max"],
-        "name":"Min/Max",
-        "dashes":None,
-        "color":"#baac70",
-        "show":False,
-        "zorder":1,
-        },
-    }
-
-anom_lines = {
-    "daily mean":{
-        "lines":["daily mean"],
-        "name":"Average",
-        "dashes":None,
-        "color":"#BB4444",
-        "show":True,
-        "zorder":5,
-        },
-    #"daily stddev":{
-    #    "lines":["daily stddev"],
-    #    "surround":"daily mean",
-    #    "name":"Standard Deviation",
-    #    "dashes":None,
-    #    "color":"#ba8970",
-    #    "show":True,
-    #    "zorder":4,
-    #    },
-    "climo p10":{
-        "lines":["climo p10"],
-        "name":"10th pctl",
-        "dashes":"12,3,3,3",
-        "color":"#338F50",
-        "show":True,
-        "zorder":2,
-        },
-    "climo p25":{
-        "lines":["climo p25"],
-        "name":"25th pctl",
-        "dashes":"2,5",
-        "color":"#338F50",
-        "show":True,
-        "zorder":3,
-        },
-    "climo p75":{
-        "lines":["climo p75"],
-        "name":"75th pctl",
-        "dashes":"2,5",
-        "color":"#338F50",
-        "show":True,
-        "zorder":3,
-        },
-    "climo p90":{
-        "lines":["climo p90"],
-        "name":"90th pctl",
-        "dashes":"12,3,3,3",
-        "color":"#338F50",
-        "show":True,
-        "zorder":2,
-        },
-    }
-
-## meta-information including *maximum* histogram bounds, layer
-## names, verbose feature names, and feature units.
-lsm_menu = {
-    #"tmax": {
-    #    "levels": {
-    #        "01-00": {"hbounds": [-22.0, 44.0], "name": "Surface"}},
-    #    "name": "Maximum Temperature",
-    #    "units": "C"},
-    "soil-moist": {
-        "levels": {
-            #"01-00": {"name": "Layer 1 (0-10cm)", "hbounds": [7.0, 54.0]},
-            #"02-00": {"name": "Layer 2", "hbounds": [80.0, 432.0]},
-            #"03-00": {"name": "Layer 3", "hbounds": [69.0, 877.0]}},
-            "01-00": {"name": "Layer 1", "hbounds": [0., 100.]},
-            "02-00": {"name": "Layer 2", "hbounds": [0., 100.]},
-            "03-00": {"name": "Layer 3", "hbounds": [0., 100.]}},
-        "name": "Soil Moisture",
-        "units": "kg / m^2"},
-    #"tmin": {
-    #    "levels": {
-    #        "01-00": {"hbounds": [-39, 29], "name": "Surface"}},
-    #    "name": "Minimum Temperature",
-    #    "units": "C"},
-    "net-long": {
-        "levels": {
-            "01-00": {"hbounds": [-118, 3.5], "name": "Surface"}},
-        "name": "Net Longwave Flux",
-        "units": "W / m^2"},
-    "evap": {
-        "levels": {
-            "01-00": {"hbounds": [-1.0, 23.0], "name": "Surface"}},
-        "name": "Evapotranspiration",
-        "units": "kg / m^2"},
-    "net-short": {
-        "levels": {
-            "01-00": {"hbounds": [1.9, 332], "name": "Surface"}},
-        "name": "Net Shortwave Flux",
-        "units": "W / m^2"},
-    "rainf": {
-        "levels": {
-            "01-00": {"hbounds": [0.0, 90.0], "name": "Surface"}},
-        "name": "Rainfall",
-        "units": "kg / m^2"},
-    "runoff": {
-        "levels": {
-            "01-00": {"hbounds": [0.0, 60.0], "name": "Surface"}},
-        "name": "Surface Runoff",
-        "units": "kg / m^2"},
-    "baseflow": {
-        "levels": {
-            "01-00": {"hbounds": [0, 32.0], "name": "Sub-surface"}},
-        "name": "Base Flow",
-        "units": "kg / m^2"},
     }

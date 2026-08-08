@@ -28,6 +28,20 @@
 
     <div class="container-fluid row">
     <div class="col-md-3 bg-light">
+
+      <div class="row" id="menu_region_row">
+        <div class="col">
+          <div class="row justify-content-center">
+            <p class="menu-section-title">Region</p>
+          </div>
+          <div class="row dropdown menu-button-container">
+            <button class="btn btn-primary dropdown-toggle dropdown-button menu-button" type="button" id="dd_button_region_name" data-bs-toggle="dropdown" aria-expanded="false">
+            </button>
+            <ul id="dd_region_name" class="dropdown-menu" aria-labelledby="dd_button_region_name"></ul>
+          </div>
+        </div>
+      </div>
+
       <div class="row" id="menu_feat_row">
         <div class="col">
           <div class="row justify-content-center">
@@ -84,6 +98,83 @@
       </div>
       -->
 
+    </div>
+
+    <div class="col-md-6" id="center_col">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="row">
+            <p class="menu-section-title">GEFS Forecast Run</p>
+          </div>
+          <div class="row">
+              <div id="menu_container_itime"></div>
+          </div>
+          <div class="row" id="main_canvas_row">
+            <div class="d-inline-block" id="cbar_container">
+              <div class="row h-100">
+                <div class="d-inline-block" id="cbar_axis_col">
+                  <div id="cbar_axis_container">
+                    <svg id="cbar_axis"></svg>
+                  </div>
+                </div>
+                <div class="d-inline-block" id="cbar_raster_col">
+                  <div id="cbar_raster_container"></div>
+                </div>
+              </div>
+            </div>
+            <div class="d-inline-block" id="map_container">
+              <div id="main_map_container"></div>
+            </div>
+          </div>
+          <!--
+          <div class="row justify-content-center">
+            <h6 id="main_label_active" class="text-center"></h6>
+          </div>
+          -->
+          <div class="row justify-content-center">
+            <div id="main_container_ticker" class="col d-flex flex-wrap justify-content-center align-items-center"></div>
+          </div>
+          <div class="row" id="buffer_forms">
+            <div class="col-xl-4 align-self-center order-xl-2">
+              <div class="row justify-content-center">
+                <button data-placement="left" class="btn m-1 buffer-button w-25" id="buffer_button_prev" aria-label="back">
+                  <span class="fa-solid fa-chevron-left fa-xs buffer-fa-span"></span>
+                </button>
+                <button class="btn m-1 buffer-button w-25" id="buffer_button_toggle" aria-label="toggle_playback">
+                  <span class="fa-solid fa-play fa-xs buffer-fa-span"></span>
+                  <span class="fa-solid fa-pause fa-xs buffer-fa-span"></span>
+                </button>
+                <button data-placement="left" class="btn m-1 buffer-button w-25" id="buffer_button_next" aria-label="forward">
+                  <span class="fa-solid fa-chevron-right fa-xs buffer-fa-span"></span>
+                </button>
+              </div>
+            </div>
+            <div class="col-xl-4 align-self-center order-xl-1">
+              <div class="row" id="buffer_date_range_row">
+                <!--
+                <div class="input-group justify-content-center" id="buffer_container_daterange">
+                  <label for="buffer_date_range" class="form-label" id="buffer_label_date">Date Range</label>
+                  <input id="buffer_date_range" name="daterange" class="text-center form-control" type="text"/>
+                </div>
+                -->
+              </div>
+            </div>
+            <div class="col-xl-4 align-self-center order-xl-3">
+              <div class="row">
+                <div class="input-group justify-content-center" id="buffer_container_framedelay">
+                  <label for="buffer_input_framedelay" class="form-label" id="buffer_label_framedelay">Frame Delay (ms)</label>
+                  <input id="buffer_input_framedelay" class="text-center form-control" type="number" step=10 min=30 value=100 max=500></input>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!--<div class="row" id="fig_daily_container"></div>-->
+      <!--<div class="row" id="fig_anom_container"></div>-->
+    </div>
+
+    <div class="col-md-3">
       <div class="row" id="menu_cmap_row">
         <hr class="menu-rule"/>
         <div class="col-md-12">
@@ -166,82 +257,14 @@
         </div>
         <!--<hr class="menu-rule"/>-->
       </div>
-    </div>
-
-    <div class="col-md-6" id="center_col">
-      <div class="row">
-        <div class="col-md-12">
-          <div class="row justify-content-center">
-              <p id="main_header_text">---</p>
-          </div>
-          <div class="row" id="main_canvas_row">
-            <div class="d-inline-block" id="cbar_container">
-              <div class="row h-100">
-                <div class="d-inline-block" id="cbar_axis_col">
-                  <div id="cbar_axis_container">
-                    <svg id="cbar_axis"></svg>
-                  </div>
-                </div>
-                <div class="d-inline-block" id="cbar_raster_col">
-                  <div id="cbar_raster_container"></div>
-                </div>
-              </div>
-            </div>
-            <div class="d-inline-block" id="map_container">
-              <div id="main_map_container"></div>
-            </div>
-          </div>
-          <!--
-          <div class="row justify-content-center">
-            <h6 id="main_label_active" class="text-center"></h6>
-          </div>
-          -->
-          <div class="row justify-content-center">
-            <div id="main_container_ticker" class="col d-flex flex-wrap justify-content-center align-items-center"></div>
-          </div>
-          <div class="row" id="buffer_forms">
-            <div class="col-xl-4 align-self-center order-xl-2">
-              <div class="row justify-content-center">
-                <button data-placement="left" class="btn m-1 buffer-button w-25" id="buffer_button_prev" aria-label="back">
-                  <span class="fa-solid fa-chevron-left fa-xs buffer-fa-span"></span>
-                </button>
-                <button class="btn m-1 buffer-button w-25" id="buffer_button_toggle" aria-label="toggle_playback">
-                  <span class="fa-solid fa-play fa-xs buffer-fa-span"></span>
-                  <span class="fa-solid fa-pause fa-xs buffer-fa-span"></span>
-                </button>
-                <button data-placement="left" class="btn m-1 buffer-button w-25" id="buffer_button_next" aria-label="forward">
-                  <span class="fa-solid fa-chevron-right fa-xs buffer-fa-span"></span>
-                </button>
-              </div>
-            </div>
-            <div class="col-xl-4 align-self-center order-xl-1">
-              <div class="row" id="buffer_date_range_row">
-                <!--
-                <div class="input-group justify-content-center" id="buffer_container_daterange">
-                  <label for="buffer_date_range" class="form-label" id="buffer_label_date">Date Range</label>
-                  <input id="buffer_date_range" name="daterange" class="text-center form-control" type="text"/>
-                </div>
-                -->
-              </div>
-            </div>
-            <div class="col-xl-4 align-self-center order-xl-3">
-              <div class="row">
-                <div class="input-group justify-content-center" id="buffer_container_framedelay">
-                  <label for="buffer_input_framedelay" class="form-label" id="buffer_label_framedelay">Frame Delay (ms)</label>
-                  <input id="buffer_input_framedelay" class="text-center form-control" type="number" step=10 min=30 value=100 max=500></input>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-md-3">
-      <div class="row" id="fig_daily_container"></div>
-      <div class="row" id="fig_anom_container"></div>
       <div class="row" id="fig_hist_container"></div>
     </div>
+
+    <template id="menu_flex_button_temp">
+      <div class="menu-button-container menu-flex-button-container">
+        <button type="button" class="btn btn-secondary menu-flex-button"></button>
+      </div>
+    </template>
 
     <template id="menu_button_temp">
       <div class="row menu-button-container">

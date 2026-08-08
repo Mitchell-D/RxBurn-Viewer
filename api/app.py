@@ -13,6 +13,7 @@ from time import perf_counter
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from starlette_compress import CompressMiddleware
 from pathlib import Path
 import redis.asyncio as redis
 import asyncio
@@ -30,53 +31,78 @@ DEBUG = True
 ## zarr store reference
 zarr.config.set({"async.concurrency": 64})
 zgrp = zarr.open("rxburn.zarr", mode="r")
-zgrp_ifs = zgrp["/ens/ifs"]
+
+rconf = {}
+itimes = {}
+for rk in zgrp["regions"].keys():
+    ra = dict(zgrp[f"/regions/{rk}"].attrs)
+    rn = int(rk[1:])
+    rconf[rn] = {
+        "width":ra["geo_ref_out"]["width"],
+        "height":ra["geo_ref_out"]["height"],
+        "lat_bounds":ra["lat_bounds"],
+        "lon_bounds":ra["lon_bounds"],
+        }
+    itimes[rn] = sorted(list(zgrp[f"/regions/{rk}/runs"].keys()))
 
 ## explicitly collect metadata relevant to IFS ensemble data.
-meta_ifs = {
-    ## yyyymmddhh string init times and yyyymmddhh:yyyymmddhhmm horizon times
-    #"init_times":list(sorted(zgrp_ifs["temporal"].keys()))
-    "init_times":zgrp_ifs.attrs["init_times"],
-    "horizon_times":zgrp_ifs.attrs["horizon_times"],
+meta_gefs = {
+    ## metadata
+    "labels":{
+        **zgrp.attrs["gefs"]["labels"],
+        "regions":list(rconf.keys()),
+        "itimes":itimes,
+        },
+    "regions":rconf,
 
-    ## data variables (ie temp, humidity, wind)
-    "feats":zgrp_ifs.attrs["feats"],
-    ## ensemble aggregation metrics
-    "metrics":zgrp_ifs.attrs["metrics"],
-    "spread_metrics":zgrp_ifs.attrs["spread_metrics"],
-
-    ## geometry (hard coding in javascript for now)
-    #"bounds_lat":zgrp_ifs.attrs["latitude_bounds"],
-    #"bounds_lon":zgrp_ifs.attrs["longitude_bounds"],
-    "grid_shape":zgrp_ifs.attrs["shape_spatial"][1:3],
-    #"geo_ref":{
-    #    "crs_wkt":zgrp_ifs.attrs["geo_ref"]["crs_wkt"],
-    #    "geo_transform":zgrp_ifs.attrs["geo_ref"]["geo_transform"],
-    #    ## ignoring semi major and minor axes
-    #    },
+    "nvtimes":zgrp.attrs["gefs"]["nvtimes"],
 
     ## data normalization
-    "norm_bounds":zgrp_ifs.attrs["norm_bounds"],
-    "norm_res":zgrp_ifs.attrs["norm_res"],
-    "mask_val":zgrp_ifs.attrs["mask_val"],
-    "cmap_default_bounds":zgrp_ifs.attrs["cmap_default_bounds"],
+    "norm_bounds":zgrp.attrs["gefs"]["norm_bounds"],
+    "norm_res":zgrp.attrs["gefs"]["norm_res"],
+    "mask_val":zgrp.attrs["gefs"]["mask_val"],
 
     ## labels
-    "long_labels_metrics":zgrp_ifs.attrs["long_labels_metrics"],
-    "long_labels_units":zgrp_ifs.attrs["long_labels_units"],
-    "short_labels_units":zgrp_ifs.attrs["short_labels_units"],
+    "long_labels":zgrp.attrs["gefs"]["long_labels"],
+    "short_labels":zgrp.attrs["gefs"]["short_labels"],
     }
 
 ## color map metadata and concatenated color map array
 cmap_info = {
-    **zgrp["cmap"].attrs,
-    "cmaps":zgrp["cmap"][...].tolist(),
+    **zgrp.attrs["cmaps"],
+    "cmaps":zgrp["cmaps"][...].tolist(),
+    "default_bounds":zgrp.attrs["gefs"]["cmap_default_bounds"],
+    "default_name":zgrp.attrs["gefs"]["cmap_default_name"],
     }
 
 """ ---( cache methods )--- """
 
+async def populate_locked_range(
+        rcache:redis.Redis, lkey:str, group:str, mapping:dict):
+    """
+    Populates a cache group with multiple k/v pairs from a dict, with the
+    assumption that the range is currently locked by the provided cache
+    semaphore key.
+
+    This method is expected to work as a background process whenever the
+    first frame request in the range acquires the lock, which allows the first
+    frame to be returned before the rest of the cache has been populated.
+    """
+    async with rcache.pipeline(transaction=True) as pipe:
+        try:
+            pipe.hsetex(
+                group,
+                mapping=mapping,
+                data_persist_option=HDPO.FNX,
+                ex=CACHE_TTL,
+                )
+            ## asynchronously add all the frames for this subkey
+            await pipe.execute()
+        finally:
+            await rcache.hdel("lock", lkey)
+
 async def raster_cache_get(request:Request, background:BackgroundTasks,
-        rcache:redis.Redis, ckey:tuple, cache_other:list):
+        rcache:redis.Redis, ckey:tuple):
     """
     retrieve raster data from the redis cache. includes logic for distributed
     mutex so that multiple workers don't try to read the same data from disc
@@ -88,23 +114,21 @@ async def raster_cache_get(request:Request, background:BackgroundTasks,
     :@param request: redis Request object for this worker
     :@param background: redis BackgroundTasks manager for bulk caching
     :@param rcache: redis cache connection object
-    :@param ckey: 5-tuple (dataset, itime, feat, metric, frame)
+    :@param ckey: 5-tuple (dataset, region, itime, feat, metric)
         for the current request
-    :@param cache_other: list of 3-tuples (dataset, itime, feat, metric)
-        for other combinations to load in a background task.
     """
-    dataset,itime,feat,metric,frame = ckey
+    dataset, region, itime, feat, metric = ckey
     ## key for the group name
-    gkey = f"{dataset}_{itime}_{feat}"
+    gkey = f"{dataset}_{region}_{itime}_{feat}"
     ## key for the current frame
-    fkey = f"{metric}_{frame}"
+    fkey = f"{metric}"
     ## if possible, immediately get from the cache
     cached = await rcache.hget(gkey, fkey)
     if not cached is None:
         return cached
 
     ## if the cache missed, determine the lock that must be acquired.
-    lkey = f"{dataset}_{itime}_{feat}_{metric}"
+    lkey = f"{dataset}_{region}_{itime}_{feat}"
     cache_being_filled = False
     while True:
         ## returns True only for the one worker that wins the race
@@ -129,45 +153,20 @@ async def raster_cache_get(request:Request, background:BackgroundTasks,
                 if DEBUG:
                     print(f"{os.getpid()} setting cache")
 
-                ## lock acquired... see which other hashes we can populate.
-                ## currently, assume if the first frame is present for a
-                ## (dataset, itime, feat, metric) combo, all the frames are
-                ## already in the cache.
-                other_locks = await asyncio.gather(*[
-                    (
-                        co,
-                        rcache.hsetex(
-                            name="lock",
-                            key="_".join(co),
-                            value="1",
-                            data_persist_option=HDPO.FNX,
-                            ex=LOCK_TTL
-                            ),
-                        )
-                    for co in cache_other
-                    if not rcache.hexists(
-                        "_".join(co[:-1]),
-                        f"{co[-1]}_0"
-                        )
-                    ])
-                ## only keep hashes for other features if semaphore acquired
-                other_locks = [co for co,acq in other_locks if acq]
-
                 ## go ahead and set the current cache value first
-                fix = meta_ifs["feats"].index(feat)
-                mix = meta_ifs["metrics"].index(metric)
-                nht = len(meta_ifs["horizon_times"][itime])
+                rk = f"r{region}"
+                fix = meta_gefs["labels"]["feats"].index(feat)
                 ## stored as: (feat, metric, horizon, lat, lon)
-                X = zgrp_ifs["spatial"][itime][fix,mix]
+                X = zgrp[f"/regions/{rk}/runs/{itime}/spatial"][fix]
                 frames = {
-                    f"{metric}_{hix}":X[hix].tobytes()
-                    for hix in range(nht)
+                    mk:X[mix].tobytes()
+                    for mix,mk in enumerate(meta_gefs["labels"]["metrics"])
                     }
-                cur_frame = frames.pop(fkey)
+                cur_frame = frames.pop(metric)
                 await rcache.hsetex(
                     gkey, fkey, cur_frame,
                     data_persist_option=HDPO.FNX,
-                    ex=LOCK_TTL,
+                    ex=CACHE_TTL,
                     )
 
                 ## dispatch a background task for loading the requested data
@@ -178,24 +177,6 @@ async def raster_cache_get(request:Request, background:BackgroundTasks,
                     group=gkey,
                     mapping=frames,
                     )
-
-                ## also dispatch background tasks for populating other data
-                for co in other_locks:
-                    olk = "_".join(co)
-                    ogk = "_".join(co[:-1]) ## group keys don't have metric
-                    fix = meta_ifs["feats"].index(c0[2])
-                    mix = meta_ifs["metrics"].index(c0[3])
-                    X = zgrp_ifs["spatial"][co[1]][fix,mix]
-                    background.add_task(
-                        populate_locked_range,
-                        rcache=rcache,
-                        lkey=olk,
-                        group=ogk,
-                        mapping={
-                            f"{co[-1]}_{hix}":X[hix].tobytes()
-                            for hix in range(nht)
-                            },
-                        )
 
                 ## indicate that the cache is being filled, so the background
                 ## task will handle releasing the semaphores
@@ -214,8 +195,6 @@ async def raster_cache_get(request:Request, background:BackgroundTasks,
                 ## this worker kicked off a background process to load other
                 ## frames. In all but the latter case, the lock needs to
                 ## be immediately released.
-                ## cache_other background locks don't need to be released here
-                ## since they are only acquired in the latter case.
                 if not cache_being_filled:
                     await rcache.hdel("lock", lkey)
         else:
@@ -226,7 +205,7 @@ async def raster_cache_get(request:Request, background:BackgroundTasks,
             ## otherwise see if the worker with the lock has added the
             ## requested value to the cache
             cached = await rcache.hget(gkey, fkey)
-            if cached is not None:
+            if not cached is None:
                 return cached
             ## if neither of the above, wait before re-checking
             await asyncio.sleep(LOCK_WAIT)
@@ -241,14 +220,19 @@ app.add_middleware(
     allow_methods=["*"], ## all HTTP methods (GET, POST, PUT, etc.)
     allow_headers=["*"], ## all headers
     )
-
-
+app.add_middleware(
+    CompressMiddleware,
+    minimum_size=500,
+    zstd_level=4,
+    brotli_quality=4,
+    gzip_level=6,
+    )
 
 """ ---( app endpoints )--- """
 
-@app.get("/raster/ens/ifs/{feat}/{metric}")
-async def raster_ens_ifs(request:Request, background:BackgroundTasks,
-        feat:str, metric:str, itime:str|None=None, frame:str|None=None,
+@app.get("/gefs/raster/{region}/{feat}/{metric}/{itime}")
+async def gefs_raster(request:Request, background:BackgroundTasks,
+        region:str, feat:str, metric:str, itime:str,
         ):
     """
     return a byte stream for the requested raster frame in the provided times
@@ -262,32 +246,27 @@ async def raster_ens_ifs(request:Request, background:BackgroundTasks,
     if DEBUG:
         dbt0 = perf_counter()
     ## validate the inputs
-    if not feat in meta_ifs["feats"]:
+    if not region in meta_gefs["labels"]["regions"]:
+        raise HTTPException(status_code=400, detail=f"Invalid region:{region}")
+    if not feat in meta_gefs["labels"]["feats"]:
         raise HTTPException(status_code=400, detail=f"Invalid feat:{feat}")
-    if not metric in meta_ifs["metrics"]:
+    if not metric in meta_gefs["labels"]["metrics"]:
         raise HTTPException(status_code=400, detail=f"Invalid metric:{metric}")
-    if not itime is None or itime in meta_ifs["init_times"]:
+    if not itime is None or itime in meta_gefs["gefs"]["itimes"]:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid init time:{itime}"
             )
-    if not frame is None or frame.isdigit():
-        raise HTTPException(status_code=400, detail=f"Frame must be an int")
     if not frame is None and not 0 <= frame < len(horizon_times[itime]):
         raise HTTPException(status_code=400, detail=f"Invalid frame {frame}")
 
-    if itime is None:
-        itime = meta_ifs["init_times"][-1]
-    if frame is None:
-        frame = "0"
-
-    fix = int(frame)
+    region = int(region)
 
     ## retrieve the cache reference from the app state namespace
     rc = app.state.redis
 
     ## get the data from the cache
-    ckey = ("ifs", itime, feat, metric, fix)
+    ckey = ("gefs", region, itime, feat, metric)
     if DEBUG:
         print(f"retrieving {ckey}")
     cached = await raster_cache_get(
@@ -296,8 +275,12 @@ async def raster_ens_ifs(request:Request, background:BackgroundTasks,
             rcache=rc,
             ckey=ckey,
             )
-    cshape = meta_ifs["grid_shape"]
-    carr = np.frombuffer(cached, dtype=np.float32).reshape(cshape)
+    cshape = (
+        meta_gefs["nvtimes"],
+        meta_gefs["regions"][region]["height"],
+        meta_gefs["regions"][region]["width"],
+        )
+    carr = np.frombuffer(cached, dtype=np.uint16).reshape(cshape)
     nbytes = str(carr.nbytes)
 
     ## return as a byte stream
@@ -322,10 +305,10 @@ def poly(pgroup:str):
         raise HTTPException(status_code=400, detail=f"Invalid pgroup:{pgroup}")
     return zgrp.attrs["polygons"][pgroup]
 
-@app.get("/menu/ens/ifs")
-def menu_ens_ifs():
+@app.get("/gefs/menu")
+def gefs_menu():
     """ endpoint for menu information (labels, time range, etc) """
-    return meta_ifs
+    return meta_gefs
 
 @app.get("/cmaps")
 def cmaps():

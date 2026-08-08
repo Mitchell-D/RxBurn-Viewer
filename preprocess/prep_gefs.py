@@ -1,15 +1,17 @@
 import numpy as np
-import netCDF4 as nc
 import zarr
-from datetime import datetime,timedelta
+import multiprocessing  as mp
+## necessary so that each process has its own network memory space
+## during data retrieval from dynamical icechunk repo
+mp.set_start_method("spawn", force=True)
+import numcodecs
+numcodecs.blosc.set_nthreads(1)
+from datetime import date,datetime,timedelta
 from pathlib import Path
-import rasterio as rio
-from rasterio.warp import calculate_default_transform
-from rasterio.transform import array_bounds
-from rasterio.warp import reproject, Resampling
-from affine import Affine
 
+from utils import get_gefs_forecast_xarray
 from config import cfg_gefs,cfg_gefs_backend
+from derived_feats import derived_feats
 
 def rescale(x, feat_key, metric_key):
     """
@@ -23,6 +25,137 @@ def rescale(x, feat_key, metric_key):
     x[m_invalid] = cfg_gefs["mask_val"]
     return x.astype(np.uint16)
 
+def mp_acquire_gefs_forecast(args):
+    return args,acquire_gefs_forecast(**args)
+
+def acquire_gefs_forecast(zarr_path, region_key, date):
+    ## open the region group and make sure this date doesn't already exist
+    print(f"starting {region_key} {date}")
+    dstr = date.strftime("%Y%m%d")
+    zgrp_root = zarr.open(zarr_path, mode="r")
+    attrs = dict(zgrp_root[f"/regions/{region_key}"].attrs)
+    zgrp = zarr.open(
+        zarr_path,
+        path=f"/regions/{region_key}/runs/{dstr}",
+        mode="a",
+        )
+    assert len(cfg_gefs["labels"]["metrics"]) == 12, \
+        "configuration must match the number of metrics in this method"
+
+    ## grab raw and derived features to acquire
+    raw_feats = cfg_gefs_backend["get_raw_gefs_feats"]
+    all_feats = cfg_gefs["labels"]["feats"]
+    fmap = cfg_gefs_backend["file_feat_mapping"]
+    fmap_r = {v:k for k,v in fmap.items()}
+
+    ## download metadata for the requested forecast subset.
+    sub = get_gefs_forecast_xarray(
+        variables=raw_feats,
+        date=date,
+        lat_range=attrs["lat_bounds"],
+        lon_range=attrs["lon_bounds"],
+        lead_times_limit=cfg_gefs_backend["get_lead_times"],
+        )
+
+    ## make sure the array has the anticipated dimensions
+    src_spatial_shape = (
+        attrs["geo_ref_src"]["height"],
+        attrs["geo_ref_src"]["width"],
+        )
+    out_grid_shape = (
+        attrs["geo_ref_out"]["height"],
+        attrs["geo_ref_out"]["width"],
+        )
+    assert sub[raw_feats[0]].shape[-2:] == src_spatial_shape, \
+        f"shape mismatch {sub[raw_feats[0]].shape=} {src_spatial_shape=}"
+    src_shape = sub[raw_feats[0]].shape
+
+    ## download data for all needed raw feats
+    sub = sub.load()
+
+    ## create the run day group and load the valid times
+    vtimes = sub["valid_time"][...]
+    zgrp.create_array(
+        "valid_time",
+        shape=vtimes.shape,
+        dtype="M8[ns]",
+        )
+    zgrp["valid_time"][...] = vtimes
+
+    ## load the region mask and index map
+    m_valid = zgrp_root[f"/regions/{region_key}/m_valid"][...]
+    ixmap = zgrp_root[f"/regions/{region_key}/index_map"][...][:,m_valid]
+
+    ## iterate over all features, calculate derived ones, and use the index
+    ## map to resample to the output domain
+    out_shape_spatial = (
+        len(all_feats), ## variables
+        len(cfg_gefs["labels"]["metrics"]), ## metrics
+        src_shape[1], ## lead times
+        out_grid_shape[0], ## latitude
+        out_grid_shape[1], ## longitude
+        )
+    out_shape_temporal = (
+        len(all_feats), ## variables
+        src_shape[0], ## ensemble members
+        src_shape[1], ## lead times
+        out_grid_shape[0], ## latitude
+        out_grid_shape[1], ## longitude
+        )
+    zgrp.create_array(
+        "spatial",
+        shape=out_shape_spatial,
+        chunks=cfg_gefs_backend["spatial_chunks"],
+        shards=cfg_gefs_backend["spatial_shards"],
+        dtype=np.uint16,
+        )
+    zgrp.create_array(
+        "temporal",
+        shape=out_shape_temporal,
+        chunks=cfg_gefs_backend["temporal_chunks"],
+        shards=cfg_gefs_backend["temporal_shards"],
+        dtype=np.uint16,
+        )
+    for fix,fk in enumerate(all_feats):
+        print("acquiring", dstr, fk)
+        tmp = np.full(out_shape_temporal[1:], np.nan)
+        if not fk in [fmap.get(k, k) for k in raw_feats]:
+            if not fk in derived_feats.keys():
+                raise ValueError(f"{fk} not a raw or derived feat")
+            args = [sub[ak].to_numpy() for ak in derived_feats[fk][0]]
+            v = derived_feats[fk][1](*args)
+        else:
+            v = sub[fmap_r.get(fk)].to_numpy()
+        #print(tmp.shape, v.shape, ixmap.shape, m_valid.shape)
+        tmp[...,m_valid] = v[...,ixmap[0],ixmap[1]]
+        tmp_min = np.amin(tmp, axis=0)
+        tmp_max = np.amax(tmp, axis=0)
+        tmp_mean = np.average(tmp, axis=0)
+        tmp_stddev = np.std(tmp, axis=0)
+        tmp_p10,tmp_p25,tmp_p50,tmp_p75,tmp_p90 = np.split(
+            np.percentile(tmp, [10,25,50,75,90], method="linear", axis=0),
+            5,
+            axis=0,
+            )
+        tmp_max_min = tmp_max - tmp_min
+        tmp_p90_p10 = tmp_p90 - tmp_p10
+        tmp_p75_p25 = tmp_p75 - tmp_p25
+        zgrp["spatial"][fix,...] = np.stack([
+            rescale(tmp_min, fk, "min"),
+            rescale(tmp_max, fk, "max"),
+            rescale(tmp_mean, fk, "mean"),
+            rescale(tmp_stddev, fk, "stddev"),
+            rescale(tmp_p10[0], fk, "p10"),
+            rescale(tmp_p25[0], fk, "p25"),
+            rescale(tmp_p50[0], fk, "p50"),
+            rescale(tmp_p75[0], fk, "p75"),
+            rescale(tmp_p90[0], fk, "p90"),
+            rescale(tmp_max_min, fk, "max-min"),
+            rescale(tmp_p90_p10[0], fk, "p90-10"),
+            rescale(tmp_p75_p25[0], fk, "p75-25"),
+            ], axis=0)
+        zgrp["temporal"][fix,...] = rescale(tmp, fk, "default")
+
 if __name__=="__main__":
     data_dir = Path("data")
     src_dir = data_dir.joinpath("source/gefs")
@@ -35,239 +168,51 @@ if __name__=="__main__":
 
     ## If True, delete existing init times from the zarr store if they fall
     ## outside the ingest_init_date_range
-    eliminate_out_of_range = False
+    eliminate_out_of_range = True
 
     ## inclusive range of initialization times of ensemble files to acquire
-    ingest_init_date_range = [datetime(2026,4,8), datetime(2026,4,9)]
-
-    """ -----( IFS ingest pipeline )----- """
-
-    metrics_spatial = [
-        "min", "max", "mean", "stddev",
-        "10pct", "25pct", "50pct", "75pct", "90pct",
-        "max-min", "90-10pct", "75-25pct",
+    ingest_init_date_range = [
+        date.today() - timedelta(days=3),
+        date.today()
         ]
 
-    ## Identify fefs files with init times in the requested range.
-    ingest_ncs = list(sorted([
-        (p,t.strftime("%Y%m%d%H")) for p,t in map(
-            lambda p:(p,datetime.strptime(p.stem.split("_")[0], "%Y%m%d%H")),
-            src_dir.iterdir()
-            )
-        if t>=ingest_init_date_range[0] and t<=ingest_init_date_range[1]
-        ], key=lambda pt:pt[1]))
+    nworkers = 8
 
-    ## Extract and ensure consistency of variable shapes from gefs files,
-    ## and store geographic reference data.
-    gefs_dims,gefs_shape,gefs_dim_dtypes = None,None,None
-    geo_ref = None
-    for p,t in ingest_ncs:
-        ds = nc.Dataset(p.as_posix(), mode="r")
-        for fk in cfg_gefs_backend["get_raw_gefs_feats"]:
-            assert fk in ds.variables.keys(), f"{fk} not in {p.as_posix()}"
-            if gefs_dims is None:
-                gefs_dims = ds.variables[fk].dimensions
-                gefs_shape = ds.variables[fk].shape
-                gefs_dim_dtypes = [ds.variables[dk].dtype for dk in gefs_dims]
-                geo_ref = {
-                    "crs":rio.crs.CRS.from_wkt(ds["spatial_ref"].crs_wkt),
-                    "transform":list(map(
-                        float, str(ds["spatial_ref"].GeoTransform).split(" ")
-                        )),
-                    "width":gefs_shape[gefs_dims.index("longitude")],
-                    "height":gefs_shape[gefs_dims.index("latitude")],
-                    }
-            else:
-                assert ds.variables[fk].dimensions == gefs_dims, \
-                    (gefs_dims, ds.variables[fk].dimensions)
-                assert ds.variables[fk].shape == gefs_shape, \
-                    (gefs_shape, ds.variables[fk].shape)
-        ds.close()
+    """ -----( GEFS ingest pipeline )----- """
 
-    t_out,w_out,h_out = calculate_default_transform(
-        geo_ref["crs"],
-        cfg_gefs_backend["crs_out"],
-        geo_ref["width"],
-        geo_ref["height"],
-        *array_bounds(
-            geo_ref["height"],
-            geo_ref["width"],
-            Affine.from_gdal(*geo_ref["transform"]),
-            ),
-        )
-
-    geo_ref_out = {
-        "crs":cfg_gefs_backend["crs_out"],
-        "width":w_out,
-        "height":h_out,
-        "transform":t_out,
+    dr = ingest_init_date_range
+    get_dates = {
+        rn:[(dr[0] + timedelta(days=i))
+            for i in range((dr[1]-dr[0]).days+1)]
+        for rn in cfg_gefs_backend["get_regions"]
         }
+    zgrp = zarr.open(zarr_out_path, mode="a")
+    for rn in cfg_gefs_backend["get_regions"]:
+        ## make sure all requested regions have been initialized
+        if f"r{rn}" not in zgrp["regions"].keys():
+            raise ValueError(f"Region {rn} needs to be initialized first.")
+        ## make sure the runs group exists
+        if "runs" not in zgrp[f"/regions/r{rn}"].keys():
+            zgrp[f"/regions/r{rn}"].create_group("runs")
+        ## check for already-acqured dates and remove stale ones
+        for dk in zgrp[f"/regions/r{rn}/runs"].keys():
+            stored_date = datetime.strptime(dk, "%Y%m%d").date()
+            if stored_date in get_dates[rn]:
+                if overwrite_existing:
+                    del zgrp[f"/regions/r{rn}/runs/{dk}"]
+                else:
+                    get_dates[rn].remove(stored_date)
+            elif eliminate_out_of_range:
+                del zgrp[f"/regions/r{rn}/runs/{dk}"]
+        for d in get_dates[rn]:
+            zgrp[f"/regions/r{rn}/runs"].create_group(d.strftime("%Y%m%d"))
 
-    print(geo_ref_out)
+    args = [
+            {"zarr_path":zarr_out_path, "region_key":f"r{rn}", "date":d}
+        for rn in get_dates.keys()
+        for d in get_dates[rn]
+        ]
 
-    exit(0)
-
-
-    ## open the zarr store
-    zstor = zarr.storage.LocalStore(zarr_out_path)
-
-    ## Write the coordinate arrays to the zarr store, always overwriting.
-    zgrp_gefs_coords = zarr.open(zstor, path="/ens/gefs/coords", mode="w")
-    ## get all the relevant coords directly from the first source file.
-    ## the user is responsible for ensuring they are consistent across netCDFs.
-    tmp_ds = nc.Dataset(ingest_ncs[0][0].as_posix(), mode="r")
-    for dk,dshape,ddtype in zip(gefs_dims,gefs_shape,gefs_dim_dtypes):
-        zgrp_gefs_coords.create_array(dk, shape=dshape, dtype=ddtype)
-        zgrp_gefs_coords[dk][...] = tmp_ds.variables[dk][...]
-    tmp_ds.close()
-
-    ## Declare separate groups for the spatial and temporal arrays
-    ## 'a' mode doesn't destroy the store if it exists, but enables writing
-    gefs_dim_sizes = dict(zip(gefs_dims, gefs_shape))
-    zgrp_gefs_spatial = zarr.open(zstor, path="/ens/gefs/spatial", mode="a")
-    zgrp_gefs_temporal = zarr.open(zstor, path="/ens/gefs/temporal", mode="a")
-
-    ## labels and shapes for the dimensions of both
-    dims_spatial = (
-        "feats", "metrics", "horizon_time", "latitude", "longitude"
-        )
-    dims_temporal = (
-        "feats", "horizon_time", "latitude", "longitude", "ensemble_member"
-        )
-    shape_spatial = (
-            len(cfg_gefs_backend["get_raw_gefs_feats"]),
-            len(metrics_spatial),
-            gefs_dim_sizes["lead_time"],
-            geo_ref_out["height"],
-            geo_ref_out["width"],
-            )
-    shape_temporal = (
-            len(cfg_gefs_backend["get_raw_gefs_feats"]),
-            gefs_dim_sizes["lead_time"],
-            geo_ref_out["height"],
-            geo_ref_out["width"],
-            gefs_dim_sizes["ensemble_member"],
-            )
-
-    init_times_str = []
-    horizon_times_str = {}
-    for src_path,tstr in sorted(ingest_ncs):
-        ds = nc.Dataset(src_path, mode="r")
-        if tstr in zgrp_gefs_spatial.keys():
-            if overwrite_existing:
-                del zgrp_gefs_spatial[tstr]
-                del zgrp_gefs_temporal[tstr]
-            else:
-                continue
-
-        itstr,_ = src_path.stem.split("_")
-        init_time = datetime.strptime(itstr, "%Y%m%d%H")
-        init_times_str.append(itstr)
-        horizon_times_str[itstr] = [
-            (init_time + timedelta(seconds=int(lts))).strftime("%Y%m%d%H%M")
-            for lts in list(ds["lead_time"][...].data)
-            ]
-
-        zgrp_gefs_spatial.create_array(
-            tstr,
-            shape=shape_spatial,
-            chunks=tuple(
-                cfg_gefs["spatial_chunks"].get(k, shape_spatial[i])
-                for i,k in enumerate(dims_spatial)
-                ),
-            shards=shape_spatial,
-            dtype=np.uint16,
-            )
-        zgrp_gefs_temporal.create_array(
-            tstr,
-            shape=shape_temporal,
-            chunks=tuple(
-                cfg_gefs["temporal_chunks"].get(k, shape_temporal[i])
-                for i,k in enumerate(dims_temporal)
-                ),
-            shards=shape_temporal,
-            dtype=np.uint16,
-            )
-        for fix,fk in enumerate(cfg_gefs["get_raw_gefs_feats"]):
-            ## originally (horizon, ensemble, lat, lon)
-            farr = ds.variables[fk][...].data
-            ## temporal array maintains individual ensemble members, and lets
-            ## the client side calculate statistics
-            ## store shape: (feat, horizon, lat, lon, ensemble)
-            zgrp_gefs_temporal[tstr][fix] = rescale(
-                    farr.transpose(0,2,3,1), fk, "default")
-            pim = cfg_gefs["pctl_interp_method"]
-            ## reduce along the ensemble axis to (horizon, lat, lon)
-            ## stack to (metric, horizon, lat, lon)
-            ## store shape: (feat, metric, horizon, lat, lon)
-            xmin = np.amin(farr,axis=1)
-            xmax = np.amax(farr,axis=1)
-            p10 = np.percentile(farr,10,method=pim,axis=1)
-            p25 = np.percentile(farr,25,method=pim,axis=1)
-            p75 = np.percentile(farr,75,method=pim,axis=1)
-            p90 = np.percentile(farr,90,method=pim,axis=1)
-
-            zgrp_gefs_spatial[tstr][fix] = np.stack([
-                rescale(xmin,fk,"min"),
-                rescale(xmax,fk,"max"),
-                rescale(np.average(farr,axis=1),fk,"mean"),
-                rescale(np.std(farr,axis=1),fk,"stddev"),
-                rescale(p10,fk,"10pct"),
-                rescale(p25,fk,"25pct"),
-                rescale(np.percentile(farr,50,method=pim,axis=1),fk,"50pct"),
-                rescale(p75,fk,"75pct"),
-                rescale(p90,fk,"90pct"),
-                rescale(xmax-xmin,fk,"max-min"),
-                rescale(p90-p10,fk,"90-10pct"),
-                rescale(p75-p25,fk,"75-25pct"),
-                ], axis=0)
-        ds.close()
-
-    ## Remove dates the fall out of the ingest range, if requested
-    if eliminate_out_of_range:
-        for tstr in zgrp_gefs_temporal.keys():
-            tmpt = datetime.strptime(tstr, "%Y%m%d%H")
-            t0,tf = ingest_init_date_range
-            if tmpt < t0 or tmpt > tf:
-                del zgrp_gefs_temporal[tmpt]
-
-    ## consolidate attribute data for the gefs ensemble group
-    zgrp_gefs = zarr.open(zstor, path="/ens/gefs", mode="a")
-    zgrp_gefs.attrs.update({
-        ## structure
-        "feats":cfg_gefs["get_raw_gefs_feats"],
-        "metrics":metrics_spatial,
-        "dims_spatial":dims_spatial,
-        "dims_temporal":dims_temporal,
-
-        "init_times":init_times_str,
-        "horizon_times":horizon_times_str,
-
-        ## geometry
-        "latitude_bounds":[
-            np.amin(zgrp_gefs_coords["latitude"]),
-            np.amax(zgrp_gefs_coords["latitude"]),
-            ],
-        "longitude_bounds":[
-            np.amin(zgrp_gefs_coords["longitude"]),
-            np.amax(zgrp_gefs_coords["longitude"]),
-            ],
-        "shape_spatial":shape_spatial,
-        "shape_temporal":shape_temporal,
-        "geo_ref":geo_ref,
-
-        ## data normalization
-        "norm_bounds":cfg_gefs["norm_bounds"],
-        "norm_res":cfg_gefs["norm_res"],
-        "mask_val":cfg_gefs["mask_val"],
-        "cmap_default_bounds":cfg_gefs["cmap_default_bounds"],
-
-        "spread_metrics":cfg_gefs["spread_metrics"],
-
-        ## labels
-        "long_labels_feats":cfg_gefs["long_labels_feats"],
-        "long_labels_metrics":cfg_gefs["long_labels_metrics"],
-        "long_labels_units":cfg_gefs["long_labels_units"],
-        "short_labels_units":cfg_gefs["short_labels_units"],
-        })
-    print(f"finished")
+    with mp.Pool(nworkers) as pool:
+        for a,_ in pool.imap_unordered(mp_acquire_gefs_forecast, args):
+            print(f"finished", a["date"], a["region_key"])
