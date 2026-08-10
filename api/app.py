@@ -50,7 +50,7 @@ meta_gefs = {
     ## metadata
     "labels":{
         **zgrp.attrs["gefs"]["labels"],
-        "regions":list(rconf.keys()),
+        "regions":list(sorted(rconf.keys())),
         "itimes":itimes,
         },
     "regions":rconf,

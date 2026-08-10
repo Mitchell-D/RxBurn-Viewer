@@ -1,6 +1,7 @@
 import { Map } from "./map.js";
 //import { MenuDate } from "./menu_date.js";
 //import { MenuFeat } from "./menu_feat.js";
+import { ColorBar } from "./ColorBar.js"
 import { Menu } from "./Menu.js";
 import { DualRangeSlider } from "./DualRangeSlider.js";
 //import { MenuPoly } from "./menu_pgroup.js";
@@ -28,11 +29,12 @@ const state = {
         metric_menu_spread:"menu_container_metric_spread",
         cmap_dropdown:"dd_cmap_name",
         cmap_dropdown_button:"dd_button_cmap",
-
+        cbar_container:"cbar_container",
 
         cmap_slider_container_id:"cmap_slider_row",
         threshold_slider_container_id:"threshold_slider_row",
 
+        tpl_cbar:"vertical_cbar_template",
         tpl_menu_flex_button:"menu_flex_button_temp",
         tpl_menu_button:"menu_button_temp",
         tpl_menu_dropdown:"dropdown_temp",
@@ -87,9 +89,15 @@ const state = {
     cmap:{
         arrays:null,
         default_bounds:null,
-        slices:null,
         options:null,
         resolution:null,
+    },
+
+    main_cbar:{
+        orientation:"vertical",
+        nticks:8,
+        tick_size:5,
+        tick_padding:2,
     },
 
     // degree bounds around selected domain within which to allow panning
@@ -113,6 +121,7 @@ let MENU_METRIC = null; // metric button menu
 let MENU_CSLIDER = null; // color map slider forms
 let MENU_TSLIDER = null; // threshold slider forms
 let MENU_CMAP = null; // color map name forms
+let MAIN_CBAR = null;
 
 // explicitly unpack metadata so there's no ambiguity
 const meta_loaded = fetch(state.urls.menu)
@@ -146,12 +155,20 @@ const meta_loaded = fetch(state.urls.menu)
 const cmaps_loaded = fetch(state.urls.cmaps)
     .then(r => r.json())
     .then(r => {
-        state.cmap.arrays = r["cmaps"];
+        //state.cmap.arrays = r["cmaps"];
         state.cmap.default_bounds = r["default_bounds"];
         state.cmap.default_name = r["default_name"];
-        state.cmap.slices = r["slices"];
+        //state.cmap.slices = r["slices"];
         state.cmap.options = r["options"];
         state.cmap.resolution = r["resolution"];
+
+        state.cmap.arrays = {};
+        for (const i in r["slices"]) {
+            const [ix0,ixf] = r["slices"][i];
+            const ck = r["options"][i];
+            state.cmap.arrays[ck] = new Uint8ClampedArray(
+                r["cmaps"].slice(ix0,ixf));
+        }
     });
 
 // initialize the map
@@ -277,6 +294,8 @@ const sliders_initialized = Promise.all([
             defaults:state.cmap.default_bounds,
             initial_conditions:[state.sel.feat, state.sel.metric],
         });
+        state.sel.cmin = MENU_CSLIDER.min_val_bnd;
+        state.sel.cmax = MENU_CSLIDER.max_val_bnd;
 
         // initialize the threshold slider menu
         MENU_TSLIDER = new DualRangeSlider({
@@ -304,6 +323,16 @@ const sliders_initialized = Promise.all([
             class_active:"btn-primary",
             class_inactive:"btn-secondary",
         });
+        state.sel.cmap = MENU_CMAP.current_value;
+
+        MAIN_CBAR = new ColorBar({
+            container_id:state.dom.cbar_container,
+            template_id:state.dom.tpl_cbar,
+            orientation:state.main_cbar.orientation,
+            nticks:state.main_cbar.nticks,
+            tick_size:state.main_cbar.tick_size,
+            tick_padding:state.main_cbar.tick_padding,
+        });
 
         // set subscriptions to menu (and by extension feat) changes
         MENU_METRIC.subscribe((new_metric) => {
@@ -317,6 +346,13 @@ const sliders_initialized = Promise.all([
         MENU_CSLIDER.subscribe((cmin,cmax) => {
             state.sel.cmin = cmin;
             state.sel.cmax = cmax;
+            MAIN_CBAR.draw({
+                cbar:state.cmap.arrays[state.sel.cmap].slice(0,-4),
+                vmin:state.sel.cmin,
+                vmax:state.sel.cmax,
+                nticks:state.main_cbar,
+                new_image:false,
+            });
         });
 
         // set subscriptions to threshold bounds changes
@@ -334,6 +370,21 @@ const sliders_initialized = Promise.all([
         MENU_CMAP.subscribe((new_cmap) => {
             state.sel.cmap = new_cmap;
             cmap_btn.textContent = new_cmap;
+            MAIN_CBAR.draw({
+                cbar:state.cmap.arrays[state.sel.cmap].slice(0,-4),
+                vmin:state.sel.cmin,
+                vmax:state.sel.cmax,
+                nticks:state.main_cbar.nticks,
+                new_image:true,
+            });
+        });
+
+        MAIN_CBAR.draw({
+            cbar:state.cmap.arrays[state.sel.cmap].slice(0,-4),
+            vmin:state.sel.cmin,
+            vmax:state.sel.cmax,
+            nticks:state.main_cbar.nticks,
+            new_image:true,
         });
 
     });

@@ -110,6 +110,9 @@
               <div id="menu_container_itime"></div>
           </div>
           <div class="row" id="main_canvas_row">
+            <div class="flex-shrink-0" id="cbar_container">
+            </div>
+            <!--
             <div class="d-inline-block" id="cbar_container">
               <div class="row h-100">
                 <div class="d-inline-block" id="cbar_axis_col">
@@ -122,7 +125,9 @@
                 </div>
               </div>
             </div>
-            <div class="d-inline-block" id="map_container">
+            -->
+            <!--<div class="d-inline-block" id="map_container">-->
+            <div class="flex-grow-1" id="map_container">
               <div id="main_map_container"></div>
             </div>
           </div>
@@ -259,6 +264,17 @@
       </div>
       <div class="row" id="fig_hist_container"></div>
     </div>
+
+    <template id="vertical_cbar_template">
+      <div class="d-flex cbar-container">
+            <div class="flex-shrink-0 cbar-axis-container-inner">
+              <svg class="cbar-axis"></svg>
+            </div>
+            <div class="flex-grow-1 cbar-canvas-container-inner">
+              <canvas class="cbar-canvas"></canvas>
+            </div>
+      </div>
+    </template>
 
     <template id="menu_flex_button_temp">
       <div class="menu-button-container menu-flex-button-container">
