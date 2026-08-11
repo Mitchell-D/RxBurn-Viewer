@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir \
     fastapi[standard] \
     rasterio \
     starlette-compress \
-    redis[asyncio]
+    redis[asyncio]>=8.0
 
 ## Expose the app on port 81
 EXPOSE 81

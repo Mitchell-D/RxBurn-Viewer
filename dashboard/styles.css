@@ -298,3 +298,18 @@ html {
     padding-left:0px;
     flex-grow:1;
 }
+
+#mask_threshold_table th {
+    padding-left:.4em;
+    padding-right:.4em;
+}
+#mask_threshold_table button {
+    width:100%;
+}
+#mask_threshold_table td {
+    padding-left:.4em;
+    padding-right:.4em;
+}
+#mask_threshold_table input {
+    width:100%;
+}

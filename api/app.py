@@ -9,14 +9,16 @@ import json
 import zarr
 import os
 import numpy as np
+import redis.asyncio as redis
+import asyncio
 from time import perf_counter
+from redis.commands.core import HashDataPersistOptions as HDPO
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from contextlib import asynccontextmanager
 from starlette_compress import CompressMiddleware
 from pathlib import Path
-import redis.asyncio as redis
-import asyncio
 
 ## amount of time to keep a cache key after a hit
 CACHE_TTL = 600 ## 10 minutes
@@ -76,6 +78,28 @@ cmap_info = {
     }
 
 """ ---( cache methods )--- """
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    declare a context manager for each worker that guaruntees the connection
+    is opened before the serve loop begins, and is closed when it ends.
+
+    Each worker instantiates its own app, so gets its own connection via the
+    app.state context.
+
+    This generator essentially making sure the single reference to the redis
+    cache reference stays alive as long as the app object stays alive.
+    __aenter__() of the wrapping context manager calls the generator once
+    (which then suspends at yield), then once again on __aexit__() to let
+    the asynchronous cache shutdown process run.
+    """
+    app.state.redis = redis.from_url(
+        os.environ["REDIS_URL"],
+        encoding="utf-8",
+        decode_responses=False,
+        )
+    yield
 
 async def populate_locked_range(
         rcache:redis.Redis, lkey:str, group:str, mapping:dict):
@@ -213,7 +237,7 @@ async def raster_cache_get(request:Request, background:BackgroundTasks,
 """ ---( app initialization )--- """
 
 ## declare app and add middleware for logging requests
-app = FastAPI(title="RxBurn Database")
+app = FastAPI(title="RxBurn Database", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -246,21 +270,20 @@ async def gefs_raster(request:Request, background:BackgroundTasks,
     if DEBUG:
         dbt0 = perf_counter()
     ## validate the inputs
+    if not region.isnumeric():
+        raise HTTPException(status_code=400, detail="region must be an int")
+    region = int(region)
     if not region in meta_gefs["labels"]["regions"]:
         raise HTTPException(status_code=400, detail=f"Invalid region:{region}")
     if not feat in meta_gefs["labels"]["feats"]:
         raise HTTPException(status_code=400, detail=f"Invalid feat:{feat}")
     if not metric in meta_gefs["labels"]["metrics"]:
         raise HTTPException(status_code=400, detail=f"Invalid metric:{metric}")
-    if not itime is None or itime in meta_gefs["gefs"]["itimes"]:
+    if not itime in meta_gefs["labels"]["itimes"][region]:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid init time:{itime}"
             )
-    if not frame is None and not 0 <= frame < len(horizon_times[itime]):
-        raise HTTPException(status_code=400, detail=f"Invalid frame {frame}")
-
-    region = int(region)
 
     ## retrieve the cache reference from the app state namespace
     rc = app.state.redis

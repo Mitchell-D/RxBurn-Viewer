@@ -24,7 +24,7 @@ services:
       - keep-groups
 
   rxburn-apicache:
-    image: docker.io/redis:7-alpine
+    image: docker.io/redis:8-alpine
     container_name: rxburn-apicache
     networks:
       - rxburn-backend

@@ -181,7 +181,6 @@
 
     <div class="col-md-3">
       <div class="row" id="menu_cmap_row">
-        <hr class="menu-rule"/>
         <div class="col-md-12">
           <div class="row justify-content-center">
             <p class="menu-section-title">Color Map + Bounds</p>
@@ -227,7 +226,16 @@
         </div>
       </div>
       <div class="row" id="menu_threshold_row">
+        <hr class="menu-rule"/>
         <div class="col-md-12">
+          <div class="row justify-content-center">
+            <p class="menu-section-title">Variable Mask Threshold</p>
+          </div>
+          <div class="row">
+            <button id="button_update_mask" class="btn btn-primary menu-button" type="button">
+                Update Global Mask
+            </button>
+          </div>
           <div class="row" id="threshold_slider_row">
             <div class="slider-container">
               <div class="row" style="display:none;">
@@ -256,6 +264,16 @@
                   <label for="slider-input-max" style="display:none;">Threshold Max</label>
                   <input class="slider-input-max"></input>
                 </div>
+              </div>
+            </div>
+          </div>
+          <div class="row" id="menu_mask_row">
+            <hr class="menu-rule"/>
+            <div class="row justify-content-center">
+              <p class="menu-section-title">Global Mask Settings</p>
+            </div>
+              <div class="row">
+                <table id="mask_threshold_table" border="1"></table>
               </div>
             </div>
           </div>

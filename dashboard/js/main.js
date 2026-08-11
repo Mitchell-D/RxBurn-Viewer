@@ -1,9 +1,11 @@
 import { Map } from "./map.js";
 //import { MenuDate } from "./menu_date.js";
 //import { MenuFeat } from "./menu_feat.js";
-import { ColorBar } from "./ColorBar.js"
+import { ColorBar } from "./ColorBar.js";
 import { Menu } from "./Menu.js";
 import { DualRangeSlider } from "./DualRangeSlider.js";
+import { KeyedTable } from "./KeyedTable.js";
+import {GEFSRasterBuffer} from "./GEFSRasterBuffer.js";
 //import { MenuPoly } from "./menu_pgroup.js";
 //import { MenuRaster } from "./menu_raster.js";
 //import { ColorMap } from "./color_map.js";
@@ -30,6 +32,8 @@ const state = {
         cmap_dropdown:"dd_cmap_name",
         cmap_dropdown_button:"dd_button_cmap",
         cbar_container:"cbar_container",
+        mask_table:"mask_threshold_table",
+        mask_update_button:"button_update_mask",
 
         cmap_slider_container_id:"cmap_slider_row",
         threshold_slider_container_id:"threshold_slider_row",
@@ -102,6 +106,17 @@ const state = {
 
     // degree bounds around selected domain within which to allow panning
     map_bounds_buffer:[1, 1],
+
+    mask_table_header_labels:[
+        "Feature",
+        "Metric",
+        "Minimum",
+        "Maximum",
+        "Delete",
+    ],
+
+    // maximum number of arrays to allow in the buffer at once
+    max_num_arrays:5,
 }
 
 // make a promise for when the DOM is loaded
@@ -122,6 +137,8 @@ let MENU_CSLIDER = null; // color map slider forms
 let MENU_TSLIDER = null; // threshold slider forms
 let MENU_CMAP = null; // color map name forms
 let MAIN_CBAR = null;
+let MENU_TTABLE = null; // threshold table
+let RASTER_BUFFER = null;
 
 // explicitly unpack metadata so there's no ambiguity
 const meta_loaded = fetch(state.urls.menu)
@@ -150,6 +167,11 @@ const meta_loaded = fetch(state.urls.menu)
         state.short_labels.feats = r["short_labels"]["feats"];
         state.short_labels.metrics = r["short_labels"]["metrics"];
         state.short_labels.units = r["short_labels"]["units"];
+
+        // go ahead and set the default itime so the first raster request can
+        // issue after this promise resolves. Other fields are global defaults.
+        const last_ix = state.labels.itimes[state.sel.region].length - 1
+        state.sel.itime = state.labels.itimes[state.sel.region][last_ix];
     });
 
 const cmaps_loaded = fetch(state.urls.cmaps)
@@ -263,6 +285,7 @@ const menu_forms_initialized = Promise.all([dom_ready, meta_loaded])
             const mrbtn = document.getElementById(
                 state.dom.region_menu_button);
             mrbtn.textContent = state.long_labels.regions[state.sel.region];
+            console.log("new region:", new_region);
         });
 
         // subscribe the metric menu to update based on the feat menu
@@ -270,18 +293,18 @@ const menu_forms_initialized = Promise.all([dom_ready, meta_loaded])
             // main state needs to be the first to update so that subscribers
             // to the metric menu can be provided an up-to-date feat state
             state.sel.feat = new_feat;
+            console.log("new feat:", new_feat);
             MENU_METRIC.update([new_feat]);
         });
         // set subscriptions to menu (and by extension feat) changes
         MENU_METRIC.subscribe((new_metric) => {
             state.sel.metric = new_metric;
+            console.log("new metric:", new_metric);
         });
-
-        // initialize the color map name forms
-
-        // initialize the time/date selection forms
-
-        // initialize the playback/buffer forms
+        MENU_ITIME.subscribe((new_itime) => {
+            state.sel.itime = new_itime;
+            console.log("new itime", new_itime);
+        });
     });
 
 const sliders_initialized = Promise.all([
@@ -304,6 +327,8 @@ const sliders_initialized = Promise.all([
             defaults:structuredClone(state.norm.bounds),
             initial_conditions:[state.sel.feat, state.sel.metric],
         });
+        state.sel.tmin = MENU_CSLIDER.min_val_bnd;
+        state.sel.tmax = MENU_CSLIDER.max_val_bnd;
 
         const cmap_options = {};
         for (const fk of state.labels.feats) {
@@ -325,6 +350,19 @@ const sliders_initialized = Promise.all([
         });
         state.sel.cmap = MENU_CMAP.current_value;
 
+        MENU_TTABLE = new KeyedTable({
+            table_id:state.dom.mask_table,
+            header_labels:state.mask_table_header_labels,
+        });
+        const tbtn = document.getElementById(state.dom.mask_update_button);
+        tbtn.addEventListener("click", () => {
+            MENU_TTABLE.update_row({
+                key:[state.sel.feat, state.sel.metric],
+                min:state.sel.tmin,
+                max:state.sel.tmax,
+            });
+        });
+
         MAIN_CBAR = new ColorBar({
             container_id:state.dom.cbar_container,
             template_id:state.dom.tpl_cbar,
@@ -333,6 +371,11 @@ const sliders_initialized = Promise.all([
             tick_size:state.main_cbar.tick_size,
             tick_padding:state.main_cbar.tick_padding,
         });
+
+        MENU_TSLIDER.subscribe((tmin, tmax) => {
+            state.sel.tmin = tmin;
+            state.sel.tmax = tmax;
+        })
 
         // set subscriptions to menu (and by extension feat) changes
         MENU_METRIC.subscribe((new_metric) => {
@@ -406,3 +449,41 @@ const map_regions_bound = Promise.all([map_started, menu_forms_initialized])
             MENU_ITIME.update([state.sel.region]);
         });
     });
+
+function update_active_array() {
+    RASTER_BUFFER.update_array({
+        array_request:{
+            region:state.sel.region,
+            feat:state.sel.feat,
+            metric:state.sel.metric,
+            itime:state.sel.itime,
+        },
+        width:state.regions[state.sel.region].width,
+        height:state.regions[state.sel.region].height,
+        ntimes:state.nvtimes,
+    });
+}
+const buffer_initialized = meta_loaded.then(()=> {
+    const rdims = {};
+    for (const r in state.regions) {
+        const {width, height} = state.regions[r];
+        rdims[r] = {width:width, height:height, ntimes:state.nvtimes};
+    }
+    RASTER_BUFFER = new GEFSRasterBuffer({
+        url_formatter:(a) => {
+            return state.urls.raster
+                + `/${a.region}/${a.feat}/${a.metric}/${a.itime}`;
+        },
+        max_num_arrays:state.max_num_arrays,
+        region_dimensions:rdims,
+    });
+    update_active_array()
+});
+
+const bind_array_requests = Promise.all([
+    buffer_initialized, map_regions_bound
+]).then(() => {
+    MENU_METRIC.subscribe(update_active_array);
+    MENU_ITIME.subscribe(update_active_array);
+    MENU_REGION.subscribe(update_active_array);
+});
