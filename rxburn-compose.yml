@@ -23,6 +23,17 @@ services:
     group_add:
       - keep-groups
 
+  rxburn-basemap:
+    image: ghcr.io/maplibre/martin:latest
+    container_name: rxburn-basemap
+    volumes:
+      - ./basemap:/data:ro
+    command: ["--config", "/data/config.yaml"]
+    expose:
+      - "3000"
+    networks:
+      - rxburn-backend
+
   rxburn-apicache:
     image: docker.io/redis:8-alpine
     container_name: rxburn-apicache
@@ -42,6 +53,7 @@ services:
       - USERNS_MODE=keep-id
     depends_on:
       - rxburn-api
+      - rxburn-basemap
     networks:
       - rxburn-backend
 

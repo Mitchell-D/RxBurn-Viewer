@@ -7,7 +7,7 @@ async function ensure_wasm_init() {
         await init();
         wasm_ready = true;
     }
-    store = new RasterStore();
+    if (!store) store = new RasterStore();
 }
 
 
@@ -20,7 +20,7 @@ self.onmessage = async (a) => {
         if (type === "load-array") {
             const {key, buffer, width, height, ntimes} = args;
             const x = new Uint16Array(buffer);
-            console.log(key, x, ntimes, height, width);
+            console.log("loading", key);
             store.add(key, x, ntimes, height, width);
             self.postMessage({
                 id:id,
@@ -29,6 +29,7 @@ self.onmessage = async (a) => {
                 error:null,
             });
         } else if (type === "delete-array") {
+            console.log("deleting", args.key);
             store.del(args.key);
             self.postMessage({
                 id:id,
@@ -77,7 +78,7 @@ self.onmessage = async (a) => {
                 key, time_index, cmap, resolution, mask_val,
                 norm, cmap_bounds, thresh_bounds
             } = args;
-
+            console.log("getting rgb of ", key, time_index);
             const rgb = store.generate_rgb(
                 key,
                 time_index,
@@ -91,6 +92,12 @@ self.onmessage = async (a) => {
                 thresh_bounds.min,
                 thresh_bounds.max,
             );
+            self.postMessage({
+                id:id,
+                ok:true,
+                result:rgb,
+                error:null,
+            });
         } else {
             console.error("unrecognized type:", type);
         }

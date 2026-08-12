@@ -80,7 +80,7 @@ export class GEFSRasterBuffer {
                             max:this.norm[feat][metric][1],
                         },
                         cmap_bounds:cmap_bounds,
-                        threshold_bounds:threshold_bounds,
+                        thresh_bounds:threshold_bounds,
                     },
                 });
             } catch (error) {
@@ -89,6 +89,7 @@ export class GEFSRasterBuffer {
             }
 
         });
+        return p_rgb;
     }
 
     // get a mask for the active itime and region. CRITICALLY, this method
@@ -480,7 +481,7 @@ export class GEFSRasterBuffer {
     }
 
     _remove_array(array_config) {
-        console.log("removing ", array_config);
+        const id = this.next_id++;
         this.arrays.delete(this._akey(array_config));
         const p_delete = new Promise((resolve, reject) => {
             this.pending.set(id, {

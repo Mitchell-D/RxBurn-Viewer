@@ -9,7 +9,8 @@
 //! marking "no data". Real-world float values are recovered via:
 //!   `real = norm_min + (raw / (resolution - 1)) * (norm_max - norm_min)`
 
-use js_sys::{Array, Float64Array, Uint16Array, Uint32Array, Uint8Array};
+use js_sys::{Array, Float64Array, Uint16Array,
+    Uint32Array,Uint8Array, Uint8ClampedArray};
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 
@@ -136,7 +137,7 @@ impl RasterStore {
         cmap_max: f64,
         thresh_min: f64,
         thresh_max: f64,
-    ) -> Result<Uint8Array, JsValue> {
+    ) -> Result<Uint8ClampedArray, JsValue> {
         // pull the requested raster and extract the provided time step
         let entry = self
             .arrays
@@ -207,7 +208,7 @@ impl RasterStore {
             out[o..o + 4].copy_from_slice(&lut_vec[c..c + 4]);
         }
 
-        Ok(Uint8Array::from(&out[..]))
+        Ok(Uint8ClampedArray::from(&out[..]))
     }
 
     /// Build a boolean mask (as a `Uint8Array` of 0/1) that is 1 wherever

@@ -14,12 +14,14 @@ export class Map {
                         "basemap":{
                             type:"raster",
                             tiles: [
-                                "https://c.tile.opentopomap.org/{z}/{x}/{y}.png"
+                                //"https://c.tile.opentopomap.org/{z}/{x}/{y}.png"
+                                "/basemap/natural_earth_2_shaded_relief.raster"
+                                + "/{z}/{x}/{y}",
                             ],
-                            minzoom:3,
+                            minzoom:2,
                             maxzoom:6,
                             tileSize:256,
-                            attribution:"© OpenStreetMap",
+                            //attribution:"© OpenStreetMap",
                         }
                     },
                     layers: [
@@ -45,6 +47,7 @@ export class Map {
                                 "raster-contrast": -0.2,
                                 "raster-saturation": -0.4,
                             },
+                            //layout: {visibility: "none"},
                         },
                         {
                             id: "raster-anchor",
@@ -68,9 +71,9 @@ export class Map {
                         }
                     ],
                 },
-                zoom: 5,
-                minZoom:3,
-                maxZoom:9,
+                zoom: 3,
+                minZoom:2,
+                maxZoom:8,
             });
 
             this.#map.once("load", resolve);
@@ -79,6 +82,7 @@ export class Map {
             });
             this.canvas = document.createElement("canvas");
             this.ctx = this.canvas.getContext("2d");
+            this.cur_bbox = null;
         });
     }
 
@@ -109,5 +113,40 @@ export class Map {
         this.ctx.imageSmoothingEnabled = false;
         this.ctx.webkitImageSmoothingEnabled = false;
         this.ctx.mozImageSmoothingEnabled = false;
+        this.cur_bbox = bbox;
+
+        const src = this.#map.getSource("raster");
+        const coords = [
+            [this.cur_bbox[0], this.cur_bbox[3]],
+            [this.cur_bbox[2], this.cur_bbox[3]],
+            [this.cur_bbox[2], this.cur_bbox[1]],
+            [this.cur_bbox[0], this.cur_bbox[1]],
+        ];
+        if (!src) {
+            this.#map.addSource("raster", {
+                type:"canvas",
+                canvas:this.canvas,
+                coordinates:coords,
+                animate:true,
+            });
+            this.#map.addLayer({
+                id:"raster-layer",
+                type:"raster",
+                source:"raster",
+                paint:{
+                    "raster-opacity":1.,
+                    "raster-resampling":"nearest",
+                },
+            }, "raster-anchor");
+        } else {
+            src.setCoordinates(coords);
+        }
+        console.log(src, this.canvas);
+    }
+
+    async render(image_data) {
+        console.log("rendering", image_data);
+        this.ctx.putImageData(image_data, 0, 0);
+        this.#map.triggerRepaint();
     }
 }

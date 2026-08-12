@@ -336,6 +336,7 @@ html {
     border-radius: 99px;
     background: var(--track-color);
     cursor: pointer;
+    touch-action: none;
 }
 
 .buffer-slider-fill {
@@ -362,6 +363,8 @@ html {
     transition:
         left 120ms ease,
         border-color 120ms ease;
+    user-select:none;
+    -webkit-user-select:none;
 }
 
 .buffer-slider-track-inactive {

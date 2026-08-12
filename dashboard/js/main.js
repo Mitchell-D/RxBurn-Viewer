@@ -52,6 +52,9 @@ const state = {
         region:8,
         feat:"temp",
         metric:"mean",
+        itime:null,
+        vtime:null,
+        vix:null,
         cmin:null, // minimum value bound for color map
         cmax:null, // minimum value bound for color map
         vmin:null, // minimum value bound for threshold
@@ -116,7 +119,7 @@ const state = {
     },
 
     // degree bounds around selected domain within which to allow panning
-    map_bounds_buffer:[1, 1],
+    map_bounds_buffer:[3, 3],
 
     mask_table_header_labels:[
         "Feature",
@@ -128,6 +131,9 @@ const state = {
 
     // maximum number of arrays to allow in the buffer at once
     max_num_arrays:5,
+
+    // milliseconds between rendering updates to chill rapid buffering
+    render_cooldown_ms:50,
 }
 
 // make a promise for when the DOM is loaded
@@ -211,11 +217,14 @@ const vtimes_loaded = fetch(state.urls.vtimes)
         console.log(r);
         state.vtimes = r;
     })
-    .then(() => {
+    .then(async () => {
         BUFFER_SLIDER = new BufferSlider({
             container_id:state.dom.buffer_slider_container,
             template_id:state.dom.tpl_buffer_slider,
+            subscription_cooldown:state.render_cooldown_ms,
         });
+        // make sure the selected itime is defined before proceeding
+        await meta_loaded;
         BUFFER_SLIDER.update(state.vtimes[state.sel.region][state.sel.itime]);
     });
 
@@ -477,6 +486,9 @@ const map_regions_bound = Promise.all([map_started, menu_forms_initialized])
     });
 
 function update_active_array() {
+    // de-activate BUFFER_SLIDER as long as array or mask requests are
+    // ongoing so that its subscriptions are only notified when the required
+    // arrays are present in the RASTER_BUFFER
     if (BUFFER_SLIDER !== null) {
         BUFFER_SLIDER.set_active(false);
         BUFFER_SLIDER.update(state.vtimes[state.sel.region][state.sel.itime]);
@@ -494,12 +506,14 @@ function update_active_array() {
     });
     state.cur.array = array;
     state.cur.mask = masks;
-    Promise.all([state.cur.array, vtimes_loaded]).then(() => {
+    return Promise.all([
+        state.cur.array, state.cur.mask, vtimes_loaded
+    ]).then(() => {
         console.log("setting buffer active");
         BUFFER_SLIDER.set_active(true);
     });
 }
-const buffer_initialized = meta_loaded.then(()=> {
+const buffer_initialized = meta_loaded.then(async ()=> {
     const rdims = {};
     for (const r in state.regions) {
         const {width, height} = state.regions[r];
@@ -512,8 +526,11 @@ const buffer_initialized = meta_loaded.then(()=> {
         },
         max_num_arrays:state.max_num_arrays,
         region_dimensions:rdims,
+        norm_bounds:state.norm.bounds,
+        data_resolution:state.norm.resolution,
+        mask_value:state.norm.mask,
     });
-    update_active_array()
+    await update_active_array()
 });
 
 const bind_array_requests = Promise.all([
@@ -528,3 +545,37 @@ const bind_array_requests = Promise.all([
         RASTER_BUFFER.update_mask(rows);
     });
 });
+
+const render_ready = Promise.all([
+    bind_array_requests, vtimes_loaded, map_regions_bound
+])
+    .then(() => {
+        console.log("subscribing to buffer slider");
+        BUFFER_SLIDER.subscribe(async v => {
+            state.sel.vtime = v.time;
+            state.sel.vix = v.index;
+            const arr = await RASTER_BUFFER.get_rgb({
+                itime:state.sel.itime,
+                region:state.sel.region,
+                feat:state.sel.feat,
+                metric:state.sel.metric,
+                time_index:state.sel.vix,
+                cmap:state.cmap.arrays[state.sel.cmap],
+                threshold_bounds:{
+                    min:state.sel.tmin,
+                    max:state.sel.tmax,
+                },
+                cmap_bounds:{
+                    min:state.sel.cmin,
+                    max:state.sel.cmax,
+                },
+            });
+            console.log(arr);
+            const rgb = new ImageData(
+                new Uint8ClampedArray(arr.buffer),
+                state.regions[state.sel.region]["width"],
+                state.regions[state.sel.region]["height"],
+            );
+            MAP.render(rgb);
+        });
+    });
