@@ -55,11 +55,11 @@ export class KeyedTable {
             rdata = this._create_row(key, min, max);
             this.rows.set(k, rdata);
         }
+        this._notify_subscribers();
     }
 
-    delete_row({
-        key, // string keys for [feat, metric]
-    }) {
+    delete_row(key) { // string keys for [feat, metric]
+        console.log("deleting", key);
         this.validate_key(key);
 
         const k = this._key_to_string(key);
@@ -71,6 +71,8 @@ export class KeyedTable {
 
         rdata.element.remove();
         this.rows.delete(k);
+
+        this._notify_subscribers();
 
         return true;
     }
@@ -204,9 +206,11 @@ export class KeyedTable {
         });
 
         // Delete the row.
+        const cls = this;
         delete_button.addEventListener("click", () => {
             tr.remove();
-            this.rows.delete(k);
+            console.log(key);
+            cls.delete_row(key);
         });
 
         return rdata;
@@ -245,10 +249,20 @@ export class KeyedTable {
         if (!typeof callback == "function") {
             throw new Error("Must provide a callback function not "+callback);
         }
-        this.susbcriptions.push(callback);
+        this.subscriptions.push(callback);
     }
 
     _notify_subscribers() {
-        this.subscriptions.forEach(f => f(this.get_rows()));
+        const cur_rows = this.get_rows();
+        const out = [];
+        for (const r of cur_rows) {
+            out.push({
+                feat:r.key[0],
+                metric:r.key[1],
+                min:r.min,
+                max:r.max,
+            });
+        }
+        this.subscriptions.forEach(f => f(out));
     }
 }

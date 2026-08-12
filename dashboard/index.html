@@ -137,7 +137,7 @@
           </div>
           -->
           <div class="row justify-content-center">
-            <div id="main_container_ticker" class="col d-flex flex-wrap justify-content-center align-items-center"></div>
+            <div id="main_container_buffer_slider" class="buffer-slider-container"></div>
           </div>
           <div class="row" id="buffer_forms">
             <div class="col-xl-4 align-self-center order-xl-2">
@@ -341,6 +341,15 @@
         <p id="tooltip_location" class="tooltip-text"></p>
         <p id="tooltip_value" class="tooltip-text"></p>
         <button id="tooltip_button_timeseries" class="btn tooltip-text">Generate Time Series</button>
+      </div>
+    </template>
+
+    <template id="buffer_slider_template">
+      <div class="buffer-slider-track buffer-slider-track-inactive">
+        <div class="buffer-slider-fill">
+        </div>
+        <div class="buffer-slider-thumb">
+        </div>
       </div>
     </template>
 

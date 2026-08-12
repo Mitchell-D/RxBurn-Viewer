@@ -5,7 +5,8 @@ import { ColorBar } from "./ColorBar.js";
 import { Menu } from "./Menu.js";
 import { DualRangeSlider } from "./DualRangeSlider.js";
 import { KeyedTable } from "./KeyedTable.js";
-import {GEFSRasterBuffer} from "./GEFSRasterBuffer.js";
+import { GEFSRasterBuffer } from "./GEFSRasterBuffer.js";
+import { BufferSlider } from "./BufferSlider.js";
 //import { MenuPoly } from "./menu_pgroup.js";
 //import { MenuRaster } from "./menu_raster.js";
 //import { ColorMap } from "./color_map.js";
@@ -34,6 +35,7 @@ const state = {
         cbar_container:"cbar_container",
         mask_table:"mask_threshold_table",
         mask_update_button:"button_update_mask",
+        buffer_slider_container:"main_container_buffer_slider",
 
         cmap_slider_container_id:"cmap_slider_row",
         threshold_slider_container_id:"threshold_slider_row",
@@ -42,6 +44,7 @@ const state = {
         tpl_menu_flex_button:"menu_flex_button_temp",
         tpl_menu_button:"menu_button_temp",
         tpl_menu_dropdown:"dropdown_temp",
+        tpl_buffer_slider:"buffer_slider_template",
         //pgroup_menu:"menu_container_pgroup",
         //date_picker:"buffer_date_range",
     },
@@ -54,15 +57,22 @@ const state = {
         vmin:null, // minimum value bound for threshold
         vmax:null, // minimum value bound for threshold
         cmap:null,
+        mask:[],
         //pgroup:"fulldomain",
         //poly:"fulldomain_0",
         //t0:null,
         //tf:null,
     },
+    // promises for current array and mask loaded in WASM
+    cur:{
+        array:null,
+        mask:null,
+    },
     urls:{
         raster:"/api/gefs/raster",
         menu:"/api/gefs/menu",
         cmaps:"/api/cmaps",
+        vtimes:"/api/gefs/vtimes",
     },
     labels:{
         regions:null,
@@ -83,6 +93,7 @@ const state = {
         metrics:null,
         units:null,
     },
+    vtimes:null, // maps regions to itimes to vtimes as YYYYmmddHH
     regions:null, // maps region numbers to dimensions and coord bounds
     nvtimes:null, // number of valid times per forecast run
     norm:{
@@ -139,6 +150,7 @@ let MENU_CMAP = null; // color map name forms
 let MAIN_CBAR = null;
 let MENU_TTABLE = null; // threshold table
 let RASTER_BUFFER = null;
+let BUFFER_SLIDER = null;
 
 // explicitly unpack metadata so there's no ambiguity
 const meta_loaded = fetch(state.urls.menu)
@@ -191,6 +203,20 @@ const cmaps_loaded = fetch(state.urls.cmaps)
             state.cmap.arrays[ck] = new Uint8ClampedArray(
                 r["cmaps"].slice(ix0,ixf));
         }
+    });
+
+const vtimes_loaded = fetch(state.urls.vtimes)
+    .then(r => r.json())
+    .then(r => {
+        console.log(r);
+        state.vtimes = r;
+    })
+    .then(() => {
+        BUFFER_SLIDER = new BufferSlider({
+            container_id:state.dom.buffer_slider_container,
+            template_id:state.dom.tpl_buffer_slider,
+        });
+        BUFFER_SLIDER.update(state.vtimes[state.sel.region][state.sel.itime]);
     });
 
 // initialize the map
@@ -451,7 +477,11 @@ const map_regions_bound = Promise.all([map_started, menu_forms_initialized])
     });
 
 function update_active_array() {
-    RASTER_BUFFER.update_array({
+    if (BUFFER_SLIDER !== null) {
+        BUFFER_SLIDER.set_active(false);
+        BUFFER_SLIDER.update(state.vtimes[state.sel.region][state.sel.itime]);
+    }
+    const {array, masks} = RASTER_BUFFER.update_array({
         array_request:{
             region:state.sel.region,
             feat:state.sel.feat,
@@ -461,6 +491,12 @@ function update_active_array() {
         width:state.regions[state.sel.region].width,
         height:state.regions[state.sel.region].height,
         ntimes:state.nvtimes,
+    });
+    state.cur.array = array;
+    state.cur.mask = masks;
+    Promise.all([state.cur.array, vtimes_loaded]).then(() => {
+        console.log("setting buffer active");
+        BUFFER_SLIDER.set_active(true);
     });
 }
 const buffer_initialized = meta_loaded.then(()=> {
@@ -481,9 +517,14 @@ const buffer_initialized = meta_loaded.then(()=> {
 });
 
 const bind_array_requests = Promise.all([
-    buffer_initialized, map_regions_bound
+    buffer_initialized, map_regions_bound, sliders_initialized,
 ]).then(() => {
     MENU_METRIC.subscribe(update_active_array);
     MENU_ITIME.subscribe(update_active_array);
     MENU_REGION.subscribe(update_active_array);
+    console.log("binding table subscriptions");
+    MENU_TTABLE.subscribe((rows) => {
+        state.sel.mask = rows;
+        RASTER_BUFFER.update_mask(rows);
+    });
 });

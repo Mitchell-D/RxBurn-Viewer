@@ -47,6 +47,16 @@ for rk in zgrp["regions"].keys():
         }
     itimes[rn] = sorted(list(zgrp[f"/regions/{rk}/runs"].keys()))
 
+vtimes = {}
+for rn in itimes.keys():
+    vtimes[rn] = {}
+    for it in itimes[rn]:
+        t = zgrp[f"/regions/r{rn}/runs/{it}/valid_time"][...]
+        vtimes[rn][it] = [
+            v.strftime("%Y%m%d%H")
+            for v in t.astype("datetime64[us]").astype("O")
+            ]
+
 ## explicitly collect metadata relevant to IFS ensemble data.
 meta_gefs = {
     ## metadata
@@ -337,3 +347,8 @@ def gefs_menu():
 def cmaps():
     """ endpoint for concatenated color maps array and its metadata """
     return cmap_info
+
+@app.get("/gefs/vtimes")
+def gefs_vtimes():
+    """ return json mapping regions to itimes to lists of string hour times """
+    return vtimes
