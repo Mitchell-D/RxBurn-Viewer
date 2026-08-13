@@ -450,7 +450,7 @@ export class GEFSRasterBuffer {
                 priority.low.push(c);
                 continue;
             }
-            if (!in_mask && !same_region) {
+            if (!in_mask && (same_itime || same_region)) {
                 priority.medium.push(c);
                 continue;
             }

@@ -13,274 +13,258 @@
 
       <link rel="stylesheet" href="pkgs/bootstrap-5.0.2-dist/css/bootstrap.min.css"></link>
       <link rel="stylesheet" href="pkgs/font-awesome-all.min.css"></link>
-      <link rel="stylesheet" href="styles.css"></link>
       <!--<link rel="stylesheet" href="pkgs/leaflet/leaflet.css"></link>-->
       <!--<script type="text/javascript" src="pkgs/leaflet/leaflet.js"></script>-->
       <script src="pkgs/d3.min.js"></script>
       <script type="text/javascript" src="pkgs/maplibre-gl.js"></script>
       <link rel="stylesheet" href="pkgs/maplibre-gl.css"></link>
+      <link rel="stylesheet" href="dark_mode.css" id="color_mode_css"></link>
+      <link rel="stylesheet" href="styles.css"></link>
       <!--<script type="text/json" src="pkgs/maplibre-gl.js.map"></script>-->
   </head>
-  <body>
-    <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
+  <body class="d-flex flex-column min-vh-100">
+    <header class="navbar sticky-top flex-md-nowrap p-0 shadow">
+      <div class="col-6">
         <a class="navbar-brand col-md-4 col-lg-2 me-0 px-3" href="#">RxBurn Ensemble Forecast Dashboard</a>
+      </div>
+      <div class="col-6 text-end">
+        <button class="btn btn-primary menu-button" id="color_mode_button" mode="dark">
+          Use Light Mode
+        </button>
+      </div>
     </header>
 
-    <div class="container-fluid row">
-    <div class="col-md-3 bg-light">
-
-      <div class="row" id="menu_region_row">
-        <div class="col">
-          <div class="row justify-content-center">
-            <p class="menu-section-title">Region</p>
-          </div>
-          <div class="row dropdown menu-button-container">
-            <button class="btn btn-primary dropdown-toggle dropdown-button menu-button" type="button" id="dd_button_region_name" data-bs-toggle="dropdown" aria-expanded="false">
-            </button>
-            <ul id="dd_region_name" class="dropdown-menu" aria-labelledby="dd_button_region_name"></ul>
-          </div>
-        </div>
-      </div>
-
-      <div class="row" id="menu_feat_row">
-        <div class="col">
-          <div class="row justify-content-center">
-            <p class="menu-section-title">Data Feature</p>
-          </div>
-          <div class="row">
-            <div class="col menu-button-column" id="menu_container_feat"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="row" id="menu_metric_row">
-        <hr class="menu-rule"/>
-        <div class="col">
-          <div class="row justify-content-center">
-            <p class="menu-section-title">Ensemble Metric</p>
-          </div>
-          <div class="row">
-            <div class="col">
-              <div class="row">
-                <div class="col menu-button-column text-center">
-                  <p style="margin-bottom:0rem;">Value</p>
-                </div>
-              </div>
-              <div class="row">
-                <div class="col menu-button-column" id="menu_container_metric_value"></div>
-              </div>
-            </div>
-            <div class="col">
-              <div class="row">
-                <div class="col menu-button-column text-center">
-                  <p style="margin-bottom:0rem;">Spread</p>
-                </div>
-              </div>
-              <div class="row">
-                <div class="col menu-button-column" id="menu_container_metric_spread"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!--
-      <div class="row" id="menu_pgroup_row">
-        <hr class="menu-rule"/>
-        <div class="col">
-          <div class="row justify-content-center">
-            <p class="menu-section-title">Polygon Set</p>
-          </div>
-          <div class="row">
-            <div class="col menu-button-column" id="menu_container_pgroup"></div>
-          </div>
-        </div>
-      </div>
-      -->
-
-    </div>
-
-    <div class="col-md-6" id="center_col">
+    <main class="container-fluid flex-grow-1">
       <div class="row">
-        <div class="col-md-12">
-          <div class="row">
-            <p class="menu-section-title">GEFS Forecast Run</p>
-          </div>
-          <div class="row">
-              <div id="menu_container_itime"></div>
-          </div>
-          <div class="row" id="main_canvas_row">
-            <div class="flex-shrink-0" id="cbar_container">
+        <div class="col-md-3">
+
+          <div class="row" id="menu_region_row">
+            <div class="col menu-button-column">
+              <div class="row justify-content-center">
+                <p class="menu-section-title">Region</p>
+              </div>
+              <div class="row dropdown menu-button-container">
+                <button class="btn btn-primary dropdown-toggle dropdown-button menu-button" type="button" id="dd_button_region_name" data-bs-toggle="dropdown" aria-expanded="false">
+                </button>
+                <ul id="dd_region_name" class="dropdown-menu" aria-labelledby="dd_button_region_name"></ul>
+              </div>
             </div>
-            <!--
-            <div class="d-inline-block" id="cbar_container">
-              <div class="row h-100">
-                <div class="d-inline-block" id="cbar_axis_col">
-                  <div id="cbar_axis_container">
-                    <svg id="cbar_axis"></svg>
+          </div>
+
+          <div class="row" id="menu_feat_row">
+            <div class="col menu-button-column">
+              <div class="row justify-content-center">
+                <p class="menu-section-title">Data Feature</p>
+              </div>
+              <div class="row">
+                <div class="col" id="menu_container_feat"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row" id="menu_metric_row">
+            <div class="col menu-button-column">
+              <hr class="menu-rule"/>
+              <div class="row justify-content-center">
+                <p class="menu-section-title">Ensemble Metric</p>
+              </div>
+              <div class="row">
+                <div class="col">
+                  <div class="row">
+                    <div class="col text-center">
+                      <p style="margin-bottom:0rem;">Value</p>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col " id="menu_container_metric_value"></div>
                   </div>
                 </div>
-                <div class="d-inline-block" id="cbar_raster_col">
-                  <div id="cbar_raster_container"></div>
+                <div class="col">
+                  <div class="row">
+                    <div class="col text-center">
+                      <p style="margin-bottom:0rem;">Spread</p>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col " id="menu_container_metric_spread"></div>
+                  </div>
                 </div>
               </div>
             </div>
-            -->
-            <!--<div class="d-inline-block" id="map_container">-->
-            <div class="flex-grow-1" id="map_container">
-              <div id="main_map_container"></div>
-            </div>
           </div>
+
           <!--
-          <div class="row justify-content-center">
-            <h6 id="main_label_active" class="text-center"></h6>
-          </div>
-          -->
-          <div class="row justify-content-center">
-            <div id="main_container_buffer_slider" class="buffer-slider-container"></div>
-          </div>
-          <div class="row justify-content-center">
-            <div class="d-flex justify-content-center" id="main_container_vector_toggle" ></div>
-          </div>
-          <!--
-          <div class="row" id="buffer_forms">
-            <div class="col-xl-4 align-self-center order-xl-2">
-              <div class="row justify-content-center">
-                <button data-placement="left" class="btn m-1 buffer-button w-25" id="buffer_button_prev" aria-label="back">
-                  <span class="fa-solid fa-chevron-left fa-xs buffer-fa-span"></span>
-                </button>
-                <button class="btn m-1 buffer-button w-25" id="buffer_button_toggle" aria-label="toggle_playback">
-                  <span class="fa-solid fa-play fa-xs buffer-fa-span"></span>
-                  <span class="fa-solid fa-pause fa-xs buffer-fa-span"></span>
-                </button>
-                <button data-placement="left" class="btn m-1 buffer-button w-25" id="buffer_button_next" aria-label="forward">
-                  <span class="fa-solid fa-chevron-right fa-xs buffer-fa-span"></span>
-                </button>
-              </div>
-            </div>
-            <div class="col-xl-4 align-self-center order-xl-1">
-              <div class="row" id="buffer_date_range_row">
-              </div>
-            </div>
-            <div class="col-xl-4 align-self-center order-xl-3">
-              <div class="row">
-                <div class="input-group justify-content-center" id="buffer_container_framedelay">
-                  <label for="buffer_input_framedelay" class="form-label" id="buffer_label_framedelay">Frame Delay (ms)</label>
-                  <input id="buffer_input_framedelay" class="text-center form-control" type="number" step=10 min=30 value=100 max=500></input>
-                </div>
-              </div>
-            </div>
-          </div>
-          -->
-        </div>
-      </div>
-      <!--<div class="row" id="fig_daily_container"></div>-->
-      <!--<div class="row" id="fig_anom_container"></div>-->
-    </div>
-
-    <div class="col-md-3">
-      <div class="row" id="menu_cmap_row">
-        <div class="col-md-12">
-          <div class="row justify-content-center">
-            <p class="menu-section-title">Color Map + Bounds</p>
-          </div>
-
-          <div class="row dropdown">
-            <button class="btn btn-primary dropdown-toggle dropdown-button menu-button" type="button" id="dd_button_cmap" data-bs-toggle="dropdown" aria-expanded="false">
-            </button>
-            <ul id="dd_cmap_name" class="dropdown-menu" aria-labelledby="dd_button_cmap_name"></ul>
-          </div>
-
-          <div class="row" id="cmap_slider_row">
-            <div class="slider-container">
-              <div class="row" style="display:none;">
-                <div class="col-md-6 slider-label-container">
-                    Min: <span class="slider-label slider-label-min"></span>
-                </div>
-                <div class="col-md-6 slider-label-container">
-                    Max: <span class="slider-label slider-label-max"></span>
-                </div>
-              </div>
-
-              <div class="row">
-                <div class="slider-track">
-                  <div class="slider-range"></div>
-                  <div class="slider-handle slider-handle-min"></div>
-                  <div class="slider-handle slider-handle-max"></div>
-                </div>
-              </div>
-
-              <div class="row">
-                <div class="col-md-6 bounds-input-container">
-                  <label for="slider-input-min" style="display:none;">Value Min</label>
-                  <input class="slider-input-min"></input>
-                </div>
-                <div class="col-md-6 bounds-input-container">
-                  <label for="slider-input-max" style="display:none;">Value Max</label>
-                  <input class="slider-input-max"></input>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="row" id="menu_threshold_row">
-        <hr class="menu-rule"/>
-        <div class="col-md-12">
-          <div class="row justify-content-center">
-            <p class="menu-section-title">Variable Mask Threshold</p>
-          </div>
-          <div class="row">
-            <button id="button_update_mask" class="btn btn-primary menu-button" type="button">
-                Update Global Mask
-            </button>
-          </div>
-          <div class="row" id="threshold_slider_row">
-            <div class="slider-container">
-              <div class="row" style="display:none;">
-                <div class="col-md-6 slider-label-container">
-                    Min: <span class="slider-label slider-label-min"></span>
-                </div>
-                <div class="col-md-6 slider-label-container">
-                    Max: <span class="slider-label slider-label-max"></span>
-                </div>
-              </div>
-
-              <div class="row">
-                <div class="slider-track">
-                  <div class="slider-range"></div>
-                  <div class="slider-handle slider-handle-min"></div>
-                  <div class="slider-handle slider-handle-max"></div>
-                </div>
-              </div>
-
-              <div class="row">
-                <div class="col-md-6 bounds-input-container">
-                  <label for="slider-input-min" style="display:none;">Threshold Min</label>
-                  <input class="slider-input-min"></input>
-                </div>
-                <div class="col-md-6 bounds-input-container">
-                  <label for="slider-input-max" style="display:none;">Threshold Max</label>
-                  <input class="slider-input-max"></input>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="row" id="menu_mask_row">
+          <div class="row" id="menu_pgroup_row">
             <hr class="menu-rule"/>
-            <div class="row justify-content-center">
-              <p class="menu-section-title">Global Mask Settings</p>
-            </div>
+            <div class="col">
+              <div class="row justify-content-center">
+                <p class="menu-section-title">Polygon Set</p>
+              </div>
               <div class="row">
-                <table id="mask_threshold_table" border="1"></table>
+                <div class="col menu-button-column" id="menu_container_pgroup"></div>
               </div>
             </div>
           </div>
+          -->
+
         </div>
-        <!--<hr class="menu-rule"/>-->
+
+        <div class="col-md-6" id="center_col">
+          <div class="row">
+            <div class="col-md-12">
+              <div class="row">
+                <p class="menu-section-title">GEFS Forecast Run</p>
+              </div>
+              <div class="row">
+                  <div id="menu_container_itime"></div>
+              </div>
+              <div class="row" id="main_canvas_row">
+                <div class="flex-shrink-0" id="cbar_container">
+                </div>
+                <!--
+                <div class="d-inline-block" id="cbar_container">
+                  <div class="row h-100">
+                    <div class="d-inline-block" id="cbar_axis_col">
+                      <div id="cbar_axis_container">
+                        <svg id="cbar_axis"></svg>
+                      </div>
+                    </div>
+                    <div class="d-inline-block" id="cbar_raster_col">
+                      <div id="cbar_raster_container"></div>
+                    </div>
+                  </div>
+                </div>
+                -->
+                <!--<div class="d-inline-block" id="map_container">-->
+                <div class="flex-grow-1" id="map_container">
+                  <div id="main_map_container"></div>
+                </div>
+              </div>
+              <!--
+              <div class="row justify-content-center">
+                <h6 id="main_label_active" class="text-center"></h6>
+              </div>
+              -->
+              <div class="row justify-content-center">
+                <div id="main_container_buffer_slider" class="buffer-slider-container"></div>
+              </div>
+              <div class="row justify-content-center">
+                <div class="d-flex justify-content-center" id="main_container_vector_toggle" ></div>
+              </div>
+            </div>
+          </div>
+          <!--<div class="row" id="fig_daily_container"></div>-->
+          <!--<div class="row" id="fig_anom_container"></div>-->
+        </div>
+
+        <div class="col-md-3">
+          <div class="row" id="menu_cmap_row">
+            <div class="col-md-12 menu-button-column">
+              <div class="row justify-content-center">
+                <p class="menu-section-title">Color Map + Bounds</p>
+              </div>
+
+              <div class="row dropdown">
+                <button class="btn btn-primary dropdown-toggle dropdown-button menu-button" type="button" id="dd_button_cmap" data-bs-toggle="dropdown" aria-expanded="false">
+                </button>
+                <ul id="dd_cmap_name" class="dropdown-menu" aria-labelledby="dd_button_cmap_name"></ul>
+              </div>
+
+              <div class="row" id="cmap_slider_row">
+                <div class="slider-container">
+                  <div class="row" style="display:none;">
+                    <div class="col-md-6 text-center slider-label-container">
+                        Min: <span class="slider-label slider-label-min"></span>
+                    </div>
+                    <div class="col-md-6 text-center slider-label-container">
+                        Max: <span class="slider-label slider-label-max"></span>
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="slider-track">
+                      <div class="slider-range"></div>
+                      <div class="slider-handle slider-handle-min"></div>
+                      <div class="slider-handle slider-handle-max"></div>
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="col-md-6 text-center bounds-input-container">
+                      <label for="slider-input-min" style="display:none;">Value Min</label>
+                      <input class="slider-input-min"></input>
+                    </div>
+                    <div class="col-md-6 text-center bounds-input-container">
+                      <label for="slider-input-max" style="display:none;">Value Max</label>
+                      <input class="slider-input-max"></input>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row" id="menu_threshold_row">
+            <hr class="menu-rule"/>
+            <div class="col-md-12 menu-button-column">
+              <div class="row justify-content-center">
+                <p class="menu-section-title">Variable Mask Threshold</p>
+              </div>
+              <div class="row">
+                <button id="button_update_mask" class="btn btn-primary menu-button" type="button">
+                    Update Global Mask
+                </button>
+              </div>
+              <div class="row" id="threshold_slider_row">
+                <div class="slider-container">
+                  <div class="row" style="display:none;">
+                    <div class="col-md-6 text-center slider-label-container">
+                        Min: <span class="slider-label slider-label-min"></span>
+                    </div>
+                    <div class="col-md-6 text-center slider-label-container">
+                        Max: <span class="slider-label slider-label-max"></span>
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="slider-track">
+                      <div class="slider-range"></div>
+                      <div class="slider-handle slider-handle-min"></div>
+                      <div class="slider-handle slider-handle-max"></div>
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="col-md-6 text-center bounds-input-container">
+                      <label for="slider-input-min" style="display:none;">Threshold Min</label>
+                      <input class="slider-input-min"></input>
+                    </div>
+                    <div class="col-md-6 text-center bounds-input-container">
+                      <label for="slider-input-max" style="display:none;">Threshold Max</label>
+                      <input class="slider-input-max"></input>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row" id="menu_mask_row">
+                <div class="col-md-12 menu-button-column">
+                  <hr class="menu-rule"/>
+                  <div class="row justify-content-center">
+                    <p class="menu-section-title">Global Mask Settings</p>
+                  </div>
+                    <div class="row">
+                      <table id="mask_threshold_table" border="1"></table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!--<hr class="menu-rule"/>-->
+          </div>
+        </div>
       </div>
-      <div class="row" id="fig_hist_container"></div>
-    </div>
+    </main>
+    <footer class="mt-auto py-3">
+    </footer>
 
     <template id="vertical_cbar_template">
       <div class="d-flex cbar-container">

@@ -24,6 +24,8 @@ import { vector_anchors, vector_styles, map_anchors } from "./map_styles.js";
 
 const state = {
     dom:{
+        color_mode_button:"color_mode_button",
+        color_mode_css:"color_mode_css",
         main_map_container:"main_map_container",
         region_menu_container:"dd_region_name",
         region_menu_button:"dd_button_region_name",
@@ -80,6 +82,8 @@ const state = {
         cmaps:"/api/cmaps",
         vtimes:"/api/gefs/vtimes",
         vectors:"/api/vector",
+        dark_mode:"dark_mode.css",
+        light_mode:"light_mode.css",
     },
     labels:{
         regions:null,
@@ -273,6 +277,21 @@ const map_started = Promise.all([dom_ready, meta_loaded])
 // load the IFS menu and
 const menu_forms_initialized = Promise.all([dom_ready, meta_loaded])
     .then(r => {
+        const cmbtn = document.getElementById(state.dom.color_mode_button);
+        const ccss = document.getElementById(state.dom.color_mode_css);
+        cmbtn.addEventListener("click", (e) => {
+            const cur_mode = e.target.getAttribute("mode");
+            if (cur_mode === "dark") {
+                ccss.href = state.urls.light_mode;
+                e.target.setAttribute("mode", "light");
+                e.target.innerText = "Use Dark Mode";
+            } else {
+                ccss.href = state.urls.dark_mode;
+                e.target.setAttribute("mode", "dark");
+                e.target.innerText = "Use Light Mode";
+            }
+        });
+
         // initialize region menu
         MENU_REGION = new Menu({
             container_id:state.dom.region_menu_container,
@@ -340,6 +359,8 @@ const menu_forms_initialized = Promise.all([dom_ready, meta_loaded])
         });
 
         MENU_REGION.subscribe((new_region) => {
+            // awkward way of handling loading new selected vector groups
+            // when the region changes
             if (MAP !== null) {
                 MAP.set_vector_visibility({
                     substring:`region-${state.sel.region}`,
