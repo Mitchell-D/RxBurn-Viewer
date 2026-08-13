@@ -246,7 +246,7 @@ export class KeyedTable {
     }
 
     subscribe(callback) {
-        if (!typeof callback == "function") {
+        if (typeof callback !== "function") {
             throw new Error("Must provide a callback function not "+callback);
         }
         this.subscriptions.push(callback);

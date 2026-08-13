@@ -383,3 +383,8 @@ html {
 .buffer-slider-track-active .buffer-slider-track:hover .buffer-slider-thumb {
     transform: translate(-50%, -50%) scale(1.2);
 }
+
+.toggle-button {
+    margin: .2em;
+    padding:.2em 1.5em;
+}

@@ -1,4 +1,4 @@
-import { Map } from "./map.js";
+import { Map } from "./Map.js";
 //import { MenuDate } from "./menu_date.js";
 //import { MenuFeat } from "./menu_feat.js";
 import { ColorBar } from "./ColorBar.js";
@@ -7,6 +7,7 @@ import { DualRangeSlider } from "./DualRangeSlider.js";
 import { KeyedTable } from "./KeyedTable.js";
 import { GEFSRasterBuffer } from "./GEFSRasterBuffer.js";
 import { BufferSlider } from "./BufferSlider.js";
+import { vector_anchors, vector_styles, map_anchors } from "./map_styles.js";
 //import { MenuPoly } from "./menu_pgroup.js";
 //import { MenuRaster } from "./menu_raster.js";
 //import { ColorMap } from "./color_map.js";
@@ -36,6 +37,7 @@ const state = {
         mask_table:"mask_threshold_table",
         mask_update_button:"button_update_mask",
         buffer_slider_container:"main_container_buffer_slider",
+        vector_toggle_container:"main_container_vector_toggle",
 
         cmap_slider_container_id:"cmap_slider_row",
         threshold_slider_container_id:"threshold_slider_row",
@@ -45,6 +47,7 @@ const state = {
         tpl_menu_button:"menu_button_temp",
         tpl_menu_dropdown:"dropdown_temp",
         tpl_buffer_slider:"buffer_slider_template",
+        tpl_toggle_button:"toggle_button_template",
         //pgroup_menu:"menu_container_pgroup",
         //date_picker:"buffer_date_range",
     },
@@ -76,6 +79,7 @@ const state = {
         menu:"/api/gefs/menu",
         cmaps:"/api/cmaps",
         vtimes:"/api/gefs/vtimes",
+        vectors:"/api/vector",
     },
     labels:{
         regions:null,
@@ -118,6 +122,9 @@ const state = {
         tick_padding:2,
     },
 
+    vector_toggle_state:null,
+    vectors:null,
+
     // degree bounds around selected domain within which to allow panning
     map_bounds_buffer:[3, 3],
 
@@ -129,8 +136,13 @@ const state = {
         "Delete",
     ],
 
+    // keep track of whether the feature or metric is in the process of
+    // changing so that the subsequent color map and slider updates don't
+    // trigger a redundant array request.
+    feat_or_metric_changing:false,
+
     // maximum number of arrays to allow in the buffer at once
-    max_num_arrays:5,
+    max_num_arrays:15,
 
     // milliseconds between rendering updates to chill rapid buffering
     render_cooldown_ms:50,
@@ -167,6 +179,7 @@ const meta_loaded = fetch(state.urls.menu)
         state.labels.metrics = r["labels"]["metrics"];
         state.labels.spread_metrics = r["labels"]["spread_metrics"];
         state.labels.itimes = r["labels"]["itimes"];
+        state.labels.vgroups = r["labels"]["vgroups"];
 
         state.regions = r["regions"];
 
@@ -185,6 +198,17 @@ const meta_loaded = fetch(state.urls.menu)
         state.short_labels.feats = r["short_labels"]["feats"];
         state.short_labels.metrics = r["short_labels"]["metrics"];
         state.short_labels.units = r["short_labels"]["units"];
+
+        state.vector_toggle_state = r["vector_toggle_state"];
+        console.log(state.vector_toggle_state);
+
+        state.vectors = {};
+        for (const v of state.labels.vgroups){
+            state.vectors[v] = {};
+            for (const r of state.labels.regions) {
+                state.vectors[v][r] = null;
+            }
+        }
 
         // go ahead and set the default itime so the first raster request can
         // issue after this promise resolves. Other fields are global defaults.
@@ -213,10 +237,7 @@ const cmaps_loaded = fetch(state.urls.cmaps)
 
 const vtimes_loaded = fetch(state.urls.vtimes)
     .then(r => r.json())
-    .then(r => {
-        console.log(r);
-        state.vtimes = r;
-    })
+    .then(r => { state.vtimes = r; })
     .then(async () => {
         BUFFER_SLIDER = new BufferSlider({
             container_id:state.dom.buffer_slider_container,
@@ -232,7 +253,10 @@ const vtimes_loaded = fetch(state.urls.vtimes)
 const map_started = Promise.all([dom_ready, meta_loaded])
     .then(() => {
         const mcon = document.getElementById(state.dom.main_map_container)
-        MAP = new Map({map_container:mcon});
+        MAP = new Map({
+            map_container:mcon,
+            map_anchors:map_anchors,
+        });
         MAP.set_region({
             bbox:[
                 state.regions[state.sel.region]["lon_bounds"][0],
@@ -316,7 +340,23 @@ const menu_forms_initialized = Promise.all([dom_ready, meta_loaded])
         });
 
         MENU_REGION.subscribe((new_region) => {
+            if (MAP !== null) {
+                MAP.set_vector_visibility({
+                    substring:`region-${state.sel.region}`,
+                    visible:false,
+                });
+            }
             state.sel.region = new_region;
+            if (MAP !== null) {
+                const tbc = document.getElementById(
+                    state.dom.vector_toggle_container);
+                for (const cb of tbc.children) {
+                    if (cb.classList.contains("btn-primary")) {
+                        cb.click();
+                        cb.click();
+                    }
+                }
+            }
             const mrbtn = document.getElementById(
                 state.dom.region_menu_button);
             mrbtn.textContent = state.long_labels.regions[state.sel.region];
@@ -334,6 +374,7 @@ const menu_forms_initialized = Promise.all([dom_ready, meta_loaded])
         // set subscriptions to menu (and by extension feat) changes
         MENU_METRIC.subscribe((new_metric) => {
             state.sel.metric = new_metric;
+            state.feat_or_metric_changing = true;
             console.log("new metric:", new_metric);
         });
         MENU_ITIME.subscribe((new_itime) => {
@@ -362,8 +403,8 @@ const sliders_initialized = Promise.all([
             defaults:structuredClone(state.norm.bounds),
             initial_conditions:[state.sel.feat, state.sel.metric],
         });
-        state.sel.tmin = MENU_CSLIDER.min_val_bnd;
-        state.sel.tmax = MENU_CSLIDER.max_val_bnd;
+        state.sel.tmin = MENU_TSLIDER.min_val_bnd;
+        state.sel.tmax = MENU_TSLIDER.max_val_bnd;
 
         const cmap_options = {};
         for (const fk of state.labels.feats) {
@@ -424,6 +465,7 @@ const sliders_initialized = Promise.all([
         MENU_CSLIDER.subscribe((cmin,cmax) => {
             state.sel.cmin = cmin;
             state.sel.cmax = cmax;
+            console.log("new cslider settings");
             MAIN_CBAR.draw({
                 cbar:state.cmap.arrays[state.sel.cmap].slice(0,-4),
                 vmin:state.sel.cmin,
@@ -435,11 +477,13 @@ const sliders_initialized = Promise.all([
 
         // set subscriptions to threshold bounds changes
         MENU_TSLIDER.subscribe((vmin,vmax) => {
+            console.log("new tslider settings");
             state.sel.vmin = vmin;
             state.sel.vmax = vmax;
         });
 
         MENU_METRIC.subscribe((new_metric) => {
+            console.log("new metric");
             MENU_CMAP.update([state.sel.feat, state.sel.metric]);
         });
         const cmap_btn = document.getElementById(
@@ -447,6 +491,7 @@ const sliders_initialized = Promise.all([
         cmap_btn.textContent = MENU_CMAP.current_value;
         MENU_CMAP.subscribe((new_cmap) => {
             state.sel.cmap = new_cmap;
+            console.log("new cmap");
             cmap_btn.textContent = new_cmap;
             MAIN_CBAR.draw({
                 cbar:state.cmap.arrays[state.sel.cmap].slice(0,-4),
@@ -484,6 +529,60 @@ const map_regions_bound = Promise.all([map_started, menu_forms_initialized])
             MENU_ITIME.update([state.sel.region]);
         });
     });
+
+const vector_toggles_active = map_regions_bound
+    .then(() => {
+        const tbc = document.getElementById(state.dom.vector_toggle_container);
+        console.log(tbc);
+        for (const v of state.labels.vgroups) {
+            const tb = document.getElementById(state.dom.tpl_toggle_button)
+                .content.querySelector(".toggle-button").cloneNode(true);
+            const def_state = state.vector_toggle_state[v];
+            tb.addEventListener("click", async () => {
+                const now_active = tb.classList.contains("btn-secondary");
+                tb.classList.toggle("btn-primary");
+                tb.classList.toggle("btn-secondary");
+                state.vector_toggle_state[v] = !state.vector_toggle_state[v];
+                if (now_active) {
+                    if (state.vectors[v][state.sel.region] === null) {
+                        const u = state.urls.vectors
+                            + `/${v}/${state.sel.region}`;
+                        state.vectors[v][state.sel.region] = fetch(u)
+                            .then(r => r.json())
+                        const gj = await state.vectors[v][state.sel.region];
+                        await MAP.add_geojson({
+                            name:`region-${state.sel.region}_${v}`,
+                            data:gj,
+                            layers:vector_styles[v],
+                        });
+                    }
+                }
+                await MAP.set_vector_visibility({
+                    substring:`region-${state.sel.region}_${v}`,
+                    visible:now_active,
+                });
+            });
+            tb.innerText = v;
+            tbc.appendChild(tb);
+            //console.log(v, state.sel.region, def_state);
+            if (def_state) tb.click();
+            //tb.classList.toggle("btn-primary", def_state);
+            //tb.classList.toggle("btn-secondary", !def_state);
+        }
+    });
+
+/*
+const vectors_requestable = Promise.all([map_started, meta_loaded])
+    .then(() => {
+        for (const v of state.labels.vgroups) {
+            if (state.vectors[v][state.sel.region] === null) {
+                fetch(state.urls.vectors + `/${v}/${state.sel.region}`)
+                    .then(r => r.json())
+                    .then(r => { state.vectors[v][state.sel.region] = r });
+            }
+        }
+    });
+*/
 
 function update_active_array() {
     // de-activate BUFFER_SLIDER as long as array or mask requests are
@@ -536,46 +635,73 @@ const buffer_initialized = meta_loaded.then(async ()=> {
 const bind_array_requests = Promise.all([
     buffer_initialized, map_regions_bound, sliders_initialized,
 ]).then(() => {
-    MENU_METRIC.subscribe(update_active_array);
+    MENU_METRIC.subscribe(async () => {
+        await update_active_array();
+        state.feat_or_metric_changing = false;
+    });
     MENU_ITIME.subscribe(update_active_array);
     MENU_REGION.subscribe(update_active_array);
-    console.log("binding table subscriptions");
     MENU_TTABLE.subscribe((rows) => {
         state.sel.mask = rows;
         RASTER_BUFFER.update_mask(rows);
     });
 });
 
+async function new_active_rgb() {
+    await state.cur.array;
+    const arr = await RASTER_BUFFER.get_rgb({
+        itime:state.sel.itime,
+        region:state.sel.region,
+        feat:state.sel.feat,
+        metric:state.sel.metric,
+        time_index:state.sel.vix,
+        cmap:state.cmap.arrays[state.sel.cmap],
+        threshold_bounds:{
+            min:state.sel.tmin,
+            max:state.sel.tmax,
+        },
+        cmap_bounds:{
+            min:state.sel.cmin,
+            max:state.sel.cmax,
+        },
+    });
+    const rgb = new ImageData(
+        new Uint8ClampedArray(arr.buffer),
+        state.regions[state.sel.region]["width"],
+        state.regions[state.sel.region]["height"],
+    );
+    return rgb;
+}
+
 const render_ready = Promise.all([
     bind_array_requests, vtimes_loaded, map_regions_bound
 ])
     .then(() => {
-        console.log("subscribing to buffer slider");
         BUFFER_SLIDER.subscribe(async v => {
             state.sel.vtime = v.time;
             state.sel.vix = v.index;
-            const arr = await RASTER_BUFFER.get_rgb({
-                itime:state.sel.itime,
-                region:state.sel.region,
-                feat:state.sel.feat,
-                metric:state.sel.metric,
-                time_index:state.sel.vix,
-                cmap:state.cmap.arrays[state.sel.cmap],
-                threshold_bounds:{
-                    min:state.sel.tmin,
-                    max:state.sel.tmax,
-                },
-                cmap_bounds:{
-                    min:state.sel.cmin,
-                    max:state.sel.cmax,
-                },
-            });
-            console.log(arr);
-            const rgb = new ImageData(
-                new Uint8ClampedArray(arr.buffer),
-                state.regions[state.sel.region]["width"],
-                state.regions[state.sel.region]["height"],
-            );
+            const rgb = await new_active_rgb();
             MAP.render(rgb);
+        });
+        // relies on state being updated by previous subscription
+        MENU_CSLIDER.subscribe(async v => {
+            if (!state.feat_or_metric_changing) {
+                const rgb = await new_active_rgb();
+                MAP.render(rgb);
+            }
+        });
+        // relies on state being updated by previous subscription
+        MENU_TSLIDER.subscribe(async v => {
+            if (!state.feat_or_metric_changing) {
+                const rgb = await new_active_rgb();
+                MAP.render(rgb);
+            }
+        });
+        // relies on state being updated by previous subscription
+        MENU_CMAP.subscribe(async v => {
+            if (!state.feat_or_metric_changing) {
+                const rgb = await new_active_rgb();
+                MAP.render(rgb);
+            }
         });
     });

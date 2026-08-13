@@ -78,7 +78,7 @@ self.onmessage = async (a) => {
                 key, time_index, cmap, resolution, mask_val,
                 norm, cmap_bounds, thresh_bounds
             } = args;
-            console.log("getting rgb of ", key, time_index);
+            //console.log("getting rgb of ", key, time_index);
             const rgb = store.generate_rgb(
                 key,
                 time_index,

@@ -60,11 +60,11 @@ if __name__=="__main__":
     vec_dir = Path("data/vector")
     domains_geojson = vec_dir.joinpath("usfs_domains.geojson")
 
-    get_meta = True
-    get_cmaps = False
-    load_vectors = True
+    load_meta = True
+    load_cmaps = False
+    load_vectors = False
 
-    if get_meta:
+    if load_meta:
         rconf = {}
         for rk in zgrp["regions"].keys():
             ra = dict(zgrp[f"/regions/{rk}"].attrs)
@@ -83,7 +83,7 @@ if __name__=="__main__":
                 }
             })
 
-    if get_cmaps:
+    if load_cmaps:
         cmarr,cms = get_cmaps(
             cmap_list=config.cfg_cmap["options"],
             cmap_resolution=config.cfg_cmap["resolution"],
@@ -95,32 +95,34 @@ if __name__=="__main__":
         zgrp.create_array("cmaps", shape=cmarr.shape, dtype=np.uint8)
         zgrp["cmaps"][...] = cmarr
         zgrp.attrs.update({"cmaps":{**config.cfg_cmap, "slices":cms}})
+        print("got color maps")
 
     if load_vectors:
         vecs = {}
-        doms = gpd.read_file(domains_geojson)
         gjp = config.cfg_gefs_backend["geojson_precision"]
+        '''
+        doms = gpd.read_file(domains_geojson)
         doms["geometry"] = doms["geometry"].set_precision(
             grid_size=1*10**(-1*gjp)
             )
         print("got domains")
         vecs["domains"] = doms.to_geo_dict()
-        vecs["forests"] = {}
-        vecs["states"] = {}
-        for rn in config.cfg_gefs_backend["get_regions"]:
-            tmp_f = gpd.read_file(vec_dir.joinpath(
-                f"usfs_forests_r{rn}.geojson"))
-            tmp_f["geometry"] = tmp_f["geometry"].set_precision(
-                grid_size=1*10**(-1*gjp)
-                )
-            vecs["forests"][rn] = tmp_f.to_geo_dict()
-            print("got forests", rn)
-        for rn in config.cfg_gefs_backend["get_regions"]:
-            tmp_s = gpd.read_file(vec_dir.joinpath(
-                f"usfs_states_r{rn}.geojson"))
-            tmp_s["geometry"] = tmp_s["geometry"].set_precision(
-                grid_size=1*10**(-1*gjp)
-                )
-            vecs["states"][rn] = tmp_s.to_geo_dict()
-            print("got states", rn)
+        '''
+        for vl in config.cfg_gefs["labels"]["vgroups"]:
+            vecs[vl] = {}
+            for rn in config.cfg_gefs_backend["get_regions"]:
+                keep_cols = config.cfg_gefs_backend["keep_vec_properties"][vl]
+                keep_cols.append("geometry")
+                gj_path = vec_dir.joinpath(f"usfs_{vl}_r{rn}.geojson")
+                tmpgj = gpd.read_file(gj_path)
+                tmpgj["geometry"] = tmpgj["geometry"].set_precision(
+                    grid_size=1*10**(-1*gjp)
+                    )
+                drop_cols = [
+                    c for c in tmpgj.columns
+                    if c not in keep_cols
+                    ]
+                tmpgj = tmpgj.drop(columns=drop_cols)
+                vecs[vl][rn] = tmpgj.to_geo_dict()
+                print(f"got r{rn} {vl}")
         zgrp.attrs.update({"vectors":vecs})

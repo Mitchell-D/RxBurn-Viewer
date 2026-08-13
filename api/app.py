@@ -57,6 +57,8 @@ for rn in itimes.keys():
             for v in t.astype("datetime64[us]").astype("O")
             ]
 
+vectors = zgrp.attrs["vectors"]
+
 ## explicitly collect metadata relevant to IFS ensemble data.
 meta_gefs = {
     ## metadata
@@ -77,6 +79,8 @@ meta_gefs = {
     ## labels
     "long_labels":zgrp.attrs["gefs"]["long_labels"],
     "short_labels":zgrp.attrs["gefs"]["short_labels"],
+
+    "vector_toggle_state":zgrp.attrs["gefs"]["vector_toggle_state"],
     }
 
 ## color map metadata and concatenated color map array
@@ -331,12 +335,16 @@ async def gefs_raster(request:Request, background:BackgroundTasks,
 
     return r
 
-@app.get("/poly/{pgroup}")
-def poly(pgroup:str):
+@app.get("/vector/{vgroup}/{region}")
+def vector(vgroup:str, region:str):
     """ endpoint for map polygon geojsons """
-    if not pgroup in zgrp.attrs["polygons"].keys():
-        raise HTTPException(status_code=400, detail=f"Invalid pgroup:{pgroup}")
-    return zgrp.attrs["polygons"][pgroup]
+    if not vgroup in vectors:
+        raise HTTPException(status_code=400, detail=f"Invalid vgroup:{vgroup}")
+    if not region.isnumeric():
+        raise HTTPException(status_code=400, detail="region must be an int")
+    if not int(region) in meta_gefs["labels"]["regions"]:
+        raise HTTPException(status_code=400, detail=f"Invalid region:{region}")
+    return vectors[vgroup][region]
 
 @app.get("/gefs/menu")
 def gefs_menu():

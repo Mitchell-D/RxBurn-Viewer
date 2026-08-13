@@ -139,6 +139,10 @@
           <div class="row justify-content-center">
             <div id="main_container_buffer_slider" class="buffer-slider-container"></div>
           </div>
+          <div class="row justify-content-center">
+            <div class="d-flex justify-content-center" id="main_container_vector_toggle" ></div>
+          </div>
+          <!--
           <div class="row" id="buffer_forms">
             <div class="col-xl-4 align-self-center order-xl-2">
               <div class="row justify-content-center">
@@ -156,12 +160,6 @@
             </div>
             <div class="col-xl-4 align-self-center order-xl-1">
               <div class="row" id="buffer_date_range_row">
-                <!--
-                <div class="input-group justify-content-center" id="buffer_container_daterange">
-                  <label for="buffer_date_range" class="form-label" id="buffer_label_date">Date Range</label>
-                  <input id="buffer_date_range" name="daterange" class="text-center form-control" type="text"/>
-                </div>
-                -->
               </div>
             </div>
             <div class="col-xl-4 align-self-center order-xl-3">
@@ -173,6 +171,7 @@
               </div>
             </div>
           </div>
+          -->
         </div>
       </div>
       <!--<div class="row" id="fig_daily_container"></div>-->
@@ -326,6 +325,10 @@
     </template>
 
     <!-- frame ticker template -->
+
+    <template id="toggle_button_template">
+        <button type="button" class="btn btn-secondary toggle-button"/>
+    </template>
 
     <template id="ticker_template">
         <div id="" class="buffer-ticker buffer-ticker-disabled"></div>
