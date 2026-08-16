@@ -61,8 +61,8 @@ if __name__=="__main__":
     domains_geojson = vec_dir.joinpath("usfs_domains.geojson")
 
     load_meta = True
-    load_cmaps = False
-    load_vectors = False
+    load_cmaps = True
+    load_vectors = True
 
     if load_meta:
         rconf = {}
@@ -72,8 +72,8 @@ if __name__=="__main__":
             rconf[rn] = {
                 "width":ra["geo_ref_out"]["width"],
                 "height":ra["geo_ref_out"]["height"],
-                "lat_bounds":ra["lat_bounds"],
-                "lon_bounds":ra["lon_bounds"],
+                "lat_bounds":ra["lat_bounds_out"],
+                "lon_bounds":ra["lon_bounds_out"],
                 }
         zgrp.attrs.update({
             "gefs":{
@@ -111,6 +111,7 @@ if __name__=="__main__":
         for vl in config.cfg_gefs["labels"]["vgroups"]:
             vecs[vl] = {}
             for rn in config.cfg_gefs_backend["get_regions"]:
+                print(f"getting r{rn} {vl}")
                 keep_cols = config.cfg_gefs_backend["keep_vec_properties"][vl]
                 keep_cols.append("geometry")
                 gj_path = vec_dir.joinpath(f"usfs_{vl}_r{rn}.geojson")
@@ -124,5 +125,4 @@ if __name__=="__main__":
                     ]
                 tmpgj = tmpgj.drop(columns=drop_cols)
                 vecs[vl][rn] = tmpgj.to_geo_dict()
-                print(f"got r{rn} {vl}")
         zgrp.attrs.update({"vectors":vecs})

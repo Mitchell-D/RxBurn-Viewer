@@ -38,15 +38,15 @@ def get_gefs_region_mapping(domain_polygon, ref_date, ref_feat, degree_buffer,
     """
     ## get bounding box around the domain polygon
     lon_min, lat_min, lon_max, lat_max = domain_polygon.bounds
-    lat_range = [lat_min-degree_buffer, lat_max+degree_buffer]
-    lon_range = [lon_min-degree_buffer, lon_max+degree_buffer]
+    request_lat_range = [lat_min-degree_buffer, lat_max+degree_buffer]
+    request_lon_range = [lon_min-degree_buffer, lon_max+degree_buffer]
 
     ## load metadata around the subdomain
     sub = get_gefs_forecast_xarray(
         variables=[ref_feat],
         date=ref_date,
-        lat_range=lat_range,
-        lon_range=lon_range,
+        lat_range=request_lat_range,
+        lon_range=request_lon_range,
         )
 
     ## build the source profile
@@ -57,11 +57,17 @@ def get_gefs_region_mapping(domain_polygon, ref_date, ref_feat, degree_buffer,
         "width":gefs_shape[gefs_dims.index("longitude")],
         "height":gefs_shape[gefs_dims.index("latitude")],
         }
+
+    lons = np.asarray(sub["longitude"])
+    lats = np.asarray(sub["latitude"])
+    dlon = np.abs(lons[1]-lons[0])
+    dlat = np.abs(lats[1]-lats[0])
+
     geo_ref_src["transform"] = rio.transform.from_bounds(
-        lon_min,
-        lat_min,
-        lon_max,
-        lat_max,
+        lons.min() - dlon / 2,
+        lats.min() - dlat / 2,
+        lons.max() + dlon / 2,
+        lats.max() + dlat / 2,
         geo_ref_src["width"],
         geo_ref_src["height"],
         )
@@ -84,6 +90,17 @@ def get_gefs_region_mapping(domain_polygon, ref_date, ref_feat, degree_buffer,
         "height":h_out,
         "transform":t_out,
         }
+
+    lon0_out,lat0_out,lonf_out,latf_out = rio.warp.transform_bounds(
+        geo_ref_out["crs"],
+        "EPSG:4326",
+        *rio.transform.array_bounds(
+            geo_ref_out["height"],
+            geo_ref_out["width"],
+            geo_ref_out["transform"]
+            ),
+        )
+    coord_range_out = ((lat0_out, latf_out), (lon0_out, lonf_out))
 
     ## determine an index mapping from the source on the destination grid
     j_out,i_out = np.meshgrid(
@@ -147,7 +164,7 @@ def get_gefs_region_mapping(domain_polygon, ref_date, ref_feat, degree_buffer,
     geo_ref_src["transform"] = geo_ref_src["transform"].to_gdal()
     geo_ref_out["transform"] = geo_ref_out["transform"].to_gdal()
 
-    return (lat_range,lon_range), \
+    return ((request_lat_range,request_lon_range), coord_range_out), \
         (geo_ref_src,geo_ref_out), \
         np.stack((j_src,i_src), axis=0), \
         (lat_out,lon_out), \
@@ -161,10 +178,12 @@ if __name__=="__main__":
     ref_feat = "temperature_2m"
     degree_buffer = 0.5
 
+    overwrite_existing = False
+
     """ ------------( end normal configuration )------------ """
 
-    if out_zarr_path.exists():
-        raise ValueError("exists: ", out_zarr_path.as_posix())
+    #if out_zarr_path.exists():
+    #    raise ValueError("exists: ", out_zarr_path.as_posix())
 
     doms = gpd.read_file(domains_poly_path)
 
@@ -181,12 +200,19 @@ if __name__=="__main__":
     '''
 
     #'''
-    zgrp = zarr.open(out_zarr_path, mode="w")
-    zgrp.create_group("regions")
+    zgrp = zarr.open(out_zarr_path, mode="a")
+    if "regions" not in zgrp.keys():
+        zgrp.create_group("regions")
     for r,g in zip(doms.region, doms.geometry):
+        if f"r{r}" in zgrp["regions"].keys():
+            if not overwrite_existing:
+                continue
+            del zgrp["regions"][f"r{r}"]
         if r not in cfg_gefs_backend["get_regions"]:
             continue
-        cb, (grs,gro), ixm, (lat,lon), m = get_gefs_region_mapping(
+
+        print(f"Initializing region {r}")
+        (cb_in,cb_out), (grs,gro), ixm, (lat,lon), m = get_gefs_region_mapping(
             domain_polygon=g,
             ref_date=ref_date,
             ref_feat=ref_feat,
@@ -196,8 +222,10 @@ if __name__=="__main__":
         zgrp[f"/regions/r{r}"].attrs.update({
             "geo_ref_src":grs,
             "geo_ref_out":gro,
-            "lat_bounds":cb[0],
-            "lon_bounds":cb[1],
+            "lat_bounds_src":cb_in[0],
+            "lon_bounds_src":cb_in[1],
+            "lat_bounds_out":cb_out[0],
+            "lon_bounds_out":cb_out[1],
             })
         zgrp[f"/regions/r{r}"].create_array(
             "m_valid",
@@ -225,3 +253,4 @@ if __name__=="__main__":
         zgrp[f"/regions/r{r}/longitude"][...] = lon
 
     #'''
+    print("finished")

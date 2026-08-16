@@ -42,8 +42,8 @@ for rk in zgrp["regions"].keys():
     rconf[rn] = {
         "width":ra["geo_ref_out"]["width"],
         "height":ra["geo_ref_out"]["height"],
-        "lat_bounds":ra["lat_bounds"],
-        "lon_bounds":ra["lon_bounds"],
+        "lat_bounds":ra["lat_bounds_out"],
+        "lon_bounds":ra["lon_bounds_out"],
         }
     itimes[rn] = sorted(list(zgrp[f"/regions/{rk}/runs"].keys()))
 

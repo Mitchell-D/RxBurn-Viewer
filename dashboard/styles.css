@@ -6,6 +6,10 @@ html {
     font-size: 16px;
 }
 
+body {
+    font-family:"Courier New", monospace;
+}
+
 .menu-section-title {
     font-weight:500;
     font-size:1.2em;
@@ -29,6 +33,8 @@ html {
     margin-left:auto;
     margin-right:auto;
     margin-top:2px;
+    padding:.15em;
+    margin-top:.15em;
 }
 .menu-button-column {
     margin:2px;
@@ -234,10 +240,43 @@ html {
 
 .toggle-button {
     margin: .2em;
-    padding:.2em 1.5em;
+    /*padding:.2em 1.5em;*/
+    width:7em;
 }
 
 #color_mode_button {
     width:16em;
     margin:1em;
+}
+
+#main_header_text {
+    width:100%;
+    text-align:center;
+    font-size:1.8em;
+    margin-top: 0.5em;
+    color:white;
+    font-family: "Courier New", monospace;
+    z-index:100;
+    position:absolute;
+    font-weight:bold;
+    left:50%;
+    transform: translateX(-50%);
+    text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.8);
+    pointer-events:none;
+}
+#main_date_text {
+    width:100%;
+    text-align:center;
+    font-size:1.8em;
+    margin: 0px;
+    color:white;
+    font-family: "Courier New", monospace;
+    z-index:100;
+    position:absolute;
+    font-weight:bold;
+    bottom:0.5em;
+    left:50%;
+    transform: translateX(-50%);
+    text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.8);
+    pointer-events:none;
 }

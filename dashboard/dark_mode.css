@@ -1,6 +1,9 @@
 :root {
-    --text-color:#d2d2c8;
-    --background-color:#191c1f;
+    /*--text-color:#d2d2c8;*/
+    --text-color:#cfbfbc;
+    /*--background-color:#101b26;*/
+    --background-color:#232d36;
+    --border-color:#de8d6f;
 }
 html {
     background-color:var(--background-color);
@@ -10,11 +13,11 @@ body {
 }
 header {
     /*background-color:#241b18;*/
-    background-color:#221607;
+    background-color:#2e3337;
 }
 footer {
     /*background-color:#241b18;*/
-    background-color:#221607;
+    background-color:#2e3337;
 }
 .navbar-brand {
     color:var(--text-color);
@@ -28,16 +31,25 @@ footer {
 }
 
 .btn-primary {
-    background-color:#dd4710;
-    border-color:#de8d6f;
+    /*background-color:#a34d14;*/
+    background-color:#9e5b29;
+    border-color:var(--border-color);
+}
+.btn-secondary:hover {
+    color:white;
+}
+.btn-secondary {
+    color:#bddae9;
 }
 .btn-primary:hover {
-    background-color:#eb7246;
-    border-color:#de8d6f;
+    /*background-color:#eb7246;*/
+    background-color:#b07345;
+    border-color:var(--border-color);
 }
 .btn-primary:focus {
-    background-color:#eb7246;
-    border-color:#de8d6f;
+    /*background-color:#eb7246;*/
+    background-color:#c97e44;
+    border-color:var(--border-color);
     box-shadow: 0 0 0 .15rem #ffcdba;
 }
 th {
@@ -52,5 +64,58 @@ p {
 }
 
 .slider-range {
-    background:#de8d6f;
+    background:var(--border-color);
+}
+
+svg text {
+    color:var(--text-color);
+}
+
+svg line {
+    color:var(--text-color);
+}
+
+/*
+svg path {
+    color:var(--text-color);
+}
+*/
+
+.buffer-slider-fill {
+    background:var(--border-color);
+}
+
+.buffer-slider-thumb {
+    background:#a34d14;
+    border:2px solid var(--border-color);
+}
+
+.buffer-slider-track {
+    background-color:#c2c6ca
+}
+
+.slider-handle {
+    background:#a34d14;
+    border:2px solid var(--border-color);
+}
+
+.dropdown-menu {
+    background-color:#c2c6ca;
+}
+
+.dropdown-item {
+    color:black;
+}
+
+.dropdown-item.btn-secondary {
+    color:black;
+}
+
+.dropdown-item.btn-primary {
+    background-color:#deab83;
+    color:black;
+}
+.dropdown-item.btn-primary:hover {
+    background-color:#f2b280;
+    color:black;
 }

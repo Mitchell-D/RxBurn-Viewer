@@ -24,6 +24,8 @@ import { vector_anchors, vector_styles, map_anchors } from "./map_styles.js";
 
 const state = {
     dom:{
+        text_main_feat:"main_header_text",
+        text_main_date:"main_date_text",
         color_mode_button:"color_mode_button",
         color_mode_css:"color_mode_css",
         main_map_container:"main_map_container",
@@ -84,6 +86,7 @@ const state = {
         vectors:"/api/vector",
         dark_mode:"dark_mode.css",
         light_mode:"light_mode.css",
+        map_glyphs:"https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
     },
     labels:{
         regions:null,
@@ -174,6 +177,25 @@ let MENU_TTABLE = null; // threshold table
 let RASTER_BUFFER = null;
 let BUFFER_SLIDER = null;
 
+function fmt_date_string(dstr) {
+    const s = `${dstr.slice(0,4)}-${dstr.slice(4,6)}-${dstr.slice(6,8)}`;
+    if (dstr.length > 8) {
+        return s + ` ${dstr.slice(8,10)}z`;
+    }
+    return s;
+}
+
+function update_main_labels() {
+    const tmf = document.getElementById(state.dom.text_main_feat);
+    const tmd = document.getElementById(state.dom.text_main_date);
+
+    tmf.textContent = state.long_labels.feats[state.sel.feat]
+        + " " + state.short_labels.metrics[state.sel.metric];
+    if (state.sel.vtime !== null) {
+        tmd.textContent = fmt_date_string(state.sel.vtime);
+    }
+}
+
 // explicitly unpack metadata so there's no ambiguity
 const meta_loaded = fetch(state.urls.menu)
     .then(r => r.json())
@@ -218,6 +240,7 @@ const meta_loaded = fetch(state.urls.menu)
         // issue after this promise resolves. Other fields are global defaults.
         const last_ix = state.labels.itimes[state.sel.region].length - 1
         state.sel.itime = state.labels.itimes[state.sel.region][last_ix];
+        update_main_labels();
     });
 
 const cmaps_loaded = fetch(state.urls.cmaps)
@@ -260,6 +283,7 @@ const map_started = Promise.all([dom_ready, meta_loaded])
         MAP = new Map({
             map_container:mcon,
             map_anchors:map_anchors,
+            glyphs_url:state.urls.map_glyphs,
         });
         MAP.set_region({
             bbox:[
@@ -396,6 +420,7 @@ const menu_forms_initialized = Promise.all([dom_ready, meta_loaded])
         MENU_METRIC.subscribe((new_metric) => {
             state.sel.metric = new_metric;
             state.feat_or_metric_changing = true;
+            update_main_labels();
             console.log("new metric:", new_metric);
         });
         MENU_ITIME.subscribe((new_itime) => {
@@ -701,8 +726,11 @@ const render_ready = Promise.all([
         BUFFER_SLIDER.subscribe(async v => {
             state.sel.vtime = v.time;
             state.sel.vix = v.index;
-            const rgb = await new_active_rgb();
-            MAP.render(rgb);
+            //console.log(v.index, v.time);
+            console.log("rendering from buffer slider");
+            const rgb = new_active_rgb();
+            update_main_labels();
+            MAP.render(await rgb);
         });
         // relies on state being updated by previous subscription
         MENU_CSLIDER.subscribe(async v => {

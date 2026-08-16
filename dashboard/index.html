@@ -18,16 +18,19 @@
       <script src="pkgs/d3.min.js"></script>
       <script type="text/javascript" src="pkgs/maplibre-gl.js"></script>
       <link rel="stylesheet" href="pkgs/maplibre-gl.css"></link>
-      <link rel="stylesheet" href="dark_mode.css" id="color_mode_css"></link>
       <link rel="stylesheet" href="styles.css"></link>
+      <link rel="stylesheet" href="dark_mode.css" id="color_mode_css"></link>
       <!--<script type="text/json" src="pkgs/maplibre-gl.js.map"></script>-->
   </head>
   <body class="d-flex flex-column min-vh-100">
     <header class="navbar sticky-top flex-md-nowrap p-0 shadow">
-      <div class="col-6">
+      <div class="col-4">
         <a class="navbar-brand col-md-4 col-lg-2 me-0 px-3" href="#">RxBurn Ensemble Forecast Dashboard</a>
       </div>
-      <div class="col-6 text-end">
+      <div class="col-4 text-center">
+          <h2 style="color:#c23232;">EXPERIMENTAL</h2>
+      </div>
+      <div class="col-4 text-end">
         <button class="btn btn-primary menu-button" id="color_mode_button" mode="dark">
           Use Light Mode
         </button>
@@ -53,6 +56,7 @@
 
           <div class="row" id="menu_feat_row">
             <div class="col menu-button-column">
+              <hr class="menu-rule"/>
               <div class="row justify-content-center">
                 <p class="menu-section-title">Data Feature</p>
               </div>
@@ -137,7 +141,10 @@
                 -->
                 <!--<div class="d-inline-block" id="map_container">-->
                 <div class="flex-grow-1" id="map_container">
-                  <div id="main_map_container"></div>
+                  <div id="main_map_container">
+                    <p id="main_header_text">---</p>
+                    <p id="main_date_text">---</p>
+                  </div>
                 </div>
               </div>
               <!--
@@ -149,7 +156,7 @@
                 <div id="main_container_buffer_slider" class="buffer-slider-container"></div>
               </div>
               <div class="row justify-content-center">
-                <div class="d-flex justify-content-center" id="main_container_vector_toggle" ></div>
+                <div class="row d-flex justify-content-center" id="main_container_vector_toggle" ></div>
               </div>
             </div>
           </div>
@@ -293,7 +300,7 @@
 
     <template id="dropdown_temp">
       <div class="menu-button-container">
-        <li><button class="dropdown-item" href="#"></button></li>
+        <li><button class="dropdown-item btn-secondary" href="#"></button></li>
       </div>
     </template>
 

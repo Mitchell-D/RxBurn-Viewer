@@ -13,6 +13,7 @@ from utils import get_gefs_forecast_xarray
 from config import cfg_gefs,cfg_gefs_backend
 from derived_feats import derived_feats
 
+'''
 def rescale(x, feat_key, metric_key):
     """
     apply mask and re-normalize to uint16 according to the configuration
@@ -22,6 +23,15 @@ def rescale(x, feat_key, metric_key):
     x = (np.clip(x, tmp_min, tmp_max) - tmp_min) / (tmp_max - tmp_min)
     ## each value should correspond to the lower bound of its bin range
     x = np.floor(np.clip(x*(cfg_gefs["norm_res"]+1), 0, cfg_gefs["norm_res"]))
+    x[m_invalid] = cfg_gefs["mask_val"]
+    return x.astype(np.uint16)
+'''
+
+def rescale(x, feat_key, metric_key):
+    m_invalid = (~np.isfinite(x)) | (x >=cfg_gefs["invalid_thresh"])
+    tmp_min,tmp_max = cfg_gefs["norm_bounds"][feat_key][metric_key]
+    x = (np.clip(x, tmp_min, tmp_max) - tmp_min) / (tmp_max - tmp_min)
+    x = np.round(np.clip(x * cfg_gefs["norm_res"], 0, cfg_gefs["norm_res"]))
     x[m_invalid] = cfg_gefs["mask_val"]
     return x.astype(np.uint16)
 
@@ -52,8 +62,8 @@ def acquire_gefs_forecast(zarr_path, region_key, date):
     sub = get_gefs_forecast_xarray(
         variables=raw_feats,
         date=date,
-        lat_range=attrs["lat_bounds"],
-        lon_range=attrs["lon_bounds"],
+        lat_range=attrs["lat_bounds_src"],
+        lon_range=attrs["lon_bounds_src"],
         lead_times_limit=cfg_gefs_backend["get_lead_times"],
         )
 
@@ -126,7 +136,6 @@ def acquire_gefs_forecast(zarr_path, region_key, date):
             v = derived_feats[fk][1](*args)
         else:
             v = sub[fmap_r.get(fk)].to_numpy()
-        #print(tmp.shape, v.shape, ixmap.shape, m_valid.shape)
         tmp[...,m_valid] = v[...,ixmap[0],ixmap[1]]
         tmp_min = np.amin(tmp, axis=0)
         tmp_max = np.amax(tmp, axis=0)
@@ -140,6 +149,7 @@ def acquire_gefs_forecast(zarr_path, region_key, date):
         tmp_max_min = tmp_max - tmp_min
         tmp_p90_p10 = tmp_p90 - tmp_p10
         tmp_p75_p25 = tmp_p75 - tmp_p25
+        print(dstr, fk, np.nanmin(tmp_min), np.nanmax(tmp_max))
         zgrp["spatial"][fix,...] = np.stack([
             rescale(tmp_min, fk, "min"),
             rescale(tmp_max, fk, "max"),
@@ -164,7 +174,7 @@ if __name__=="__main__":
     ## If True, completely overwrite any existing ensemble runs by init time.
     ## Coordinate and attribute data is always overwritten, so if appending
     ## with overwrite_existing=False, make sure they still apply.
-    overwrite_existing = True
+    overwrite_existing = False
 
     ## If True, delete existing init times from the zarr store if they fall
     ## outside the ingest_init_date_range
@@ -208,7 +218,7 @@ if __name__=="__main__":
             zgrp[f"/regions/r{rn}/runs"].create_group(d.strftime("%Y%m%d"))
 
     args = [
-            {"zarr_path":zarr_out_path, "region_key":f"r{rn}", "date":d}
+        {"zarr_path":zarr_out_path, "region_key":f"r{rn}", "date":d}
         for rn in get_dates.keys()
         for d in get_dates[rn]
         ]

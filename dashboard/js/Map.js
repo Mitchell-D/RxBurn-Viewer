@@ -4,6 +4,7 @@ export class Map {
     constructor({
         map_container,
         map_anchors,
+        glyphs_url,
     }) {
         this.#ready = new Promise((resolve, reject) => {
             this.#map = new maplibregl.Map({
@@ -11,6 +12,7 @@ export class Map {
                 center:[-92.195082, 37.104743],
                 style: {
                     version: 8,
+                    glyphs:glyphs_url,
                     sources: {
                         "basemap":{
                             type:"raster",
@@ -132,6 +134,7 @@ export class Map {
                     type:l.type,
                     source:name,
                     paint:l.paint,
+                    layout:l?.layout ?? {},
                 }, cur_anchor);
                 cur_anchor = `${name}_${l.name}`;
             }
