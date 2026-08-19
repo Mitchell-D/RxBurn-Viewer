@@ -31,7 +31,11 @@ def rescale(x, feat_key, metric_key):
     m_invalid = (~np.isfinite(x)) | (x >=cfg_gefs["invalid_thresh"])
     tmp_min,tmp_max = cfg_gefs["norm_bounds"][feat_key][metric_key]
     x = (np.clip(x, tmp_min, tmp_max) - tmp_min) / (tmp_max - tmp_min)
-    x = np.round(np.clip(x * cfg_gefs["norm_res"], 0, cfg_gefs["norm_res"]))
+    x = np.round(np.clip(
+        x*(cfg_gefs["norm_res"]-1),
+        0,
+        cfg_gefs["norm_res"]-1
+        ))
     x[m_invalid] = cfg_gefs["mask_val"]
     return x.astype(np.uint16)
 
@@ -169,7 +173,7 @@ def acquire_gefs_forecast(zarr_path, region_key, date):
 if __name__=="__main__":
     data_dir = Path("data")
     src_dir = data_dir.joinpath("source/gefs")
-    zarr_out_path = data_dir.joinpath("store/rxburn.zarr")
+    zarr_out_path = data_dir.joinpath("store/rxburn_new.zarr")
 
     ## If True, completely overwrite any existing ensemble runs by init time.
     ## Coordinate and attribute data is always overwritten, so if appending

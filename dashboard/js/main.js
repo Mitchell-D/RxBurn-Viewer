@@ -40,6 +40,7 @@ const state = {
         cbar_container:"cbar_container",
         mask_table:"mask_threshold_table",
         mask_update_button:"button_update_mask",
+        mask_display_button:"button_display_mask",
         buffer_slider_container:"main_container_buffer_slider",
         vector_toggle_container:"main_container_vector_toggle",
 
@@ -68,6 +69,7 @@ const state = {
         vmax:null, // minimum value bound for threshold
         cmap:null,
         mask:[],
+        global_mask_active:false,
         //pgroup:"fulldomain",
         //poly:"fulldomain_0",
         //t0:null,
@@ -133,7 +135,7 @@ const state = {
     vectors:null,
 
     // degree bounds around selected domain within which to allow panning
-    map_bounds_buffer:[3, 3],
+    map_bounds_buffer:[6, 6],
 
     mask_table_header_labels:[
         "Feature",
@@ -485,6 +487,19 @@ const sliders_initialized = Promise.all([
             });
         });
 
+        const mdbtn = document.getElementById(state.dom.mask_display_button);
+        mdbtn.addEventListener("click", () => {
+            if (state.sel.global_mask_active) {
+                state.sel.global_mask_active = false;
+                mdbtn.innerText = "Show Global Mask";
+            } else {
+                if (state.sel.mask.length === 0) return;
+                console.log("getting mask");
+                state.sel.global_mask_active = true;
+                mdbtn.innerText = "Hide Global Mask";
+            }
+        });
+
         MAIN_CBAR = new ColorBar({
             container_id:state.dom.cbar_container,
             template_id:state.dom.tpl_cbar,
@@ -727,7 +742,7 @@ const render_ready = Promise.all([
             state.sel.vtime = v.time;
             state.sel.vix = v.index;
             //console.log(v.index, v.time);
-            console.log("rendering from buffer slider");
+            //console.log("rendering from buffer slider");
             const rgb = new_active_rgb();
             update_main_labels();
             MAP.render(await rgb);

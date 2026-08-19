@@ -55,6 +55,7 @@ self.onmessage = async (a) => {
                 thresh_min.push(mask[i].min);
                 thresh_max.push(mask[i].max);
             }
+            console.log("generating mask");
             /*
             const mask = store.generate_threshold_mask(
                 keys,

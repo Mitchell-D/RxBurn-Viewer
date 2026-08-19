@@ -24,22 +24,22 @@
   </head>
   <body class="d-flex flex-column min-vh-100">
     <header class="navbar sticky-top flex-md-nowrap p-0 shadow">
-      <div class="col-4">
-        <a class="navbar-brand col-md-4 col-lg-2 me-0 px-3" href="#">RxBurn Ensemble Forecast Dashboard</a>
+      <div class="col-5">
+        <a class="navbar-brand text-wrap col-md-4 col-lg-2 me-0 px-3" href="#">RxBurn Ensemble Forecast Dashboard</a>
       </div>
-      <div class="col-4 text-center">
-          <h2 style="color:#c23232;">EXPERIMENTAL</h2>
+      <div class="col-2 text-center">
+          <h4 style="color:#c23232;">EXPERIMENTAL</h4>
       </div>
-      <div class="col-4 text-end">
+      <div class="col-5 text-end">
         <button class="btn btn-primary menu-button" id="color_mode_button" mode="dark">
           Use Light Mode
         </button>
       </div>
     </header>
 
-    <main class="container-fluid flex-grow-1">
-      <div class="row">
-        <div class="col-md-3">
+    <main class="container-fluid flex-grow-1 d-flex flex-column">
+      <div class="row flex-grow-1">
+        <div class="col-md-3 side-column">
 
           <div class="row" id="menu_region_row">
             <div class="col menu-button-column">
@@ -164,7 +164,7 @@
           <!--<div class="row" id="fig_anom_container"></div>-->
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-3 side-column">
           <div class="row" id="menu_cmap_row">
             <div class="col-md-12 menu-button-column">
               <div class="row justify-content-center">
@@ -222,7 +222,7 @@
                 </button>
               </div>
               <div class="row" id="threshold_slider_row">
-                <div class="slider-container">
+                <div class="col slider-container">
                   <div class="row" style="display:none;">
                     <div class="col-md-6 text-center slider-label-container">
                         Min: <span class="slider-label slider-label-min"></span>
@@ -242,11 +242,15 @@
 
                   <div class="row">
                     <div class="col-md-6 text-center bounds-input-container">
-                      <label for="slider-input-min" style="display:none;">Threshold Min</label>
+                      <label for="slider-input-min" style="display:none;">
+                        Threshold Min
+                      </label>
                       <input class="slider-input-min"></input>
                     </div>
                     <div class="col-md-6 text-center bounds-input-container">
-                      <label for="slider-input-max" style="display:none;">Threshold Max</label>
+                      <label for="slider-input-max" style="display:none;">
+                        Threshold Max
+                      </label>
                       <input class="slider-input-max"></input>
                     </div>
                   </div>
@@ -256,12 +260,19 @@
                 <div class="col-md-12 menu-button-column">
                   <hr class="menu-rule"/>
                   <div class="row justify-content-center">
-                    <p class="menu-section-title">Global Mask Settings</p>
+                    <p class="menu-section-title">
+                      Global Mask Settings
+                    </p>
                   </div>
-                    <div class="row">
-                      <table id="mask_threshold_table" border="1"></table>
-                    </div>
+                  <div class="row justify-content-center">
+                    <button id="button_display_mask" class="m-2 btn btn-primary menu-button" type="button">
+                      Toggle Global Mask
+                    </button>
                   </div>
+                  <div class="row">
+                    <table id="mask_threshold_table" border="1"></table>
+                  </div>
+                  <!--</div>-->
                 </div>
               </div>
             </div>

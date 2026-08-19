@@ -171,7 +171,7 @@ def get_gefs_region_mapping(domain_polygon, ref_date, ref_feat, degree_buffer,
         m_valid
 
 if __name__=="__main__":
-    out_zarr_path = Path("data/store/rxburn.zarr")
+    out_zarr_path = Path("data/store/rxburn_new.zarr")
     domains_poly_path = Path("data/vector/usfs_domains.geojson")
 
     ref_date = date(2024, 1, 1)
