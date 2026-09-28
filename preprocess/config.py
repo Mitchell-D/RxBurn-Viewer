@@ -504,8 +504,8 @@ cfg_gefs = {
 
     "vector_toggle_state":{
         "states":True,
-        "forests":False,
-        "roads":True,
+        "forests":True,
+        "roads":False,
         "places":False,
         "rivers":False,
         },
@@ -557,7 +557,8 @@ cfg_gefs_backend = {
         "states":[],
         "places":["SCALERANK", "NAME"],
         "rivers":["name", "scalerank", "min_zoom", "strokeweig"],
-        "roads":["JURISNAME", "ROADNUM", "LANES"],
+        #"roads":["JURISNAME", "ROADNUM", "LANES"],
+        "roads":["FULLNAME"],
         },
     }
 

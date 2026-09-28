@@ -615,6 +615,7 @@ const vector_toggles_active = map_regions_bound
                             name:`region-${state.sel.region}_${v}`,
                             data:gj,
                             layers:vector_styles[v],
+                            anchor:vector_anchors[v],
                         });
                     }
                 }

@@ -1,9 +1,9 @@
 version: "3"
 
 services:
-  rxburn-api:
+  pod-mdodson-rxburn-api:
     build: ./api
-    container_name: rxburn-api
+    container_name: pod-mdodson-rxburn-api
     ports:
       - "81"
     volumes:
@@ -14,54 +14,51 @@ services:
       - USERNS_MODE=keep-id
       - LOG_LEVEL=info
       - UVICORN_ACCESS_LOG=true
-      - REDIS_URL=redis://rxburn-apicache:6379
+      - REDIS_URL=redis://pod-mdodson-rxburn-apicache:6379
     depends_on:
-      - rxburn-apicache
+      - pod-mdodson-rxburn-apicache
     networks:
-      - rxburn-backend
+      - pod-mdodson-rxburn-backend
     ## neccesary so that zarr store can live in drought group directory
     group_add:
       - keep-groups
 
-  rxburn-basemap:
+  pod-mdodson-rxburn-basemap:
     image: ghcr.io/maplibre/martin:latest
-    container_name: rxburn-basemap
+    container_name: pod-mdodson-rxburn-basemap
     volumes:
       - ./basemap:/data:ro
     command: ["--config", "/data/config.yaml"]
     expose:
       - "3000"
     networks:
-      - rxburn-backend
+      - pod-mdodson-rxburn-backend
 
-  rxburn-apicache:
+  pod-mdodson-rxburn-apicache:
     image: docker.io/redis:8-alpine
-    container_name: rxburn-apicache
+    container_name: pod-mdodson-rxburn-apicache
     networks:
-      - rxburn-backend
+      - pod-mdodson-rxburn-backend
 
-  rxburn-dashboard:
+  pod-mdodson-rxburn-dashboard:
     image: nginx:1.28.0
-    container_name: rxburn-dashboard
+    container_name: pod-mdodson-rxburn-dashboard
     ports:
       - "18087:80"
     volumes:
       - ./dashboard:/usr/share/nginx/html:Z
       - ./dashboard/default.conf:/etc/nginx/conf.d/default.conf:ro,Z
-      - rxburn-nginx-cache:/var/cache/nginx/rxburn_data_cache
+    tmpfs:
+      - /var/cache/nginx/rxburn_data_cache:rw,noexec,nosuid,size=512m
     environment:
       - USERNS_MODE=keep-id
     depends_on:
-      - rxburn-api
-      - rxburn-basemap
+      - pod-mdodson-rxburn-api
+      - pod-mdodson-rxburn-basemap
     networks:
-      - rxburn-backend
-
-## named volume for proxy cache created by nginx server
-volumes:
-  rxburn-nginx-cache:
+      - pod-mdodson-rxburn-backend
 
 networks:
-  rxburn-backend:
+  pod-mdodson-rxburn-backend:
     driver: bridge
     enable_ipv6: false
