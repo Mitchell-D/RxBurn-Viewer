@@ -81,6 +81,8 @@ meta_gefs = {
     "short_labels":zgrp.attrs["gefs"]["short_labels"],
 
     "vector_toggle_state":zgrp.attrs["gefs"]["vector_toggle_state"],
+
+    "region_map_form":dict(zgrp["region_map"].attrs),
     }
 
 ## color map metadata and concatenated color map array
@@ -90,6 +92,10 @@ cmap_info = {
     "default_bounds":zgrp.attrs["gefs"]["cmap_default_bounds"],
     "default_name":zgrp.attrs["gefs"]["cmap_default_name"],
     }
+
+## region map arrays
+rm_borders = zgrp["region_map"]["borders"][...]
+rm_raster = zgrp["region_map"]["raster"][...]
 
 """ ---( cache methods )--- """
 
@@ -335,6 +341,36 @@ async def gefs_raster(request:Request, background:BackgroundTasks,
 
     return r
 
+@app.get("/gefs/pixel/{region}/{feat}/{itime}/{pxy}/{pxx}")
+def req_pixel(region:str, feat:str, itime:str, pxy:str, pxx:str):
+    """ """
+    print(f"requested {region} {feat} {itime} {pxy} {pxx}")
+    if not region in meta_gefs["labels"]["regions"]:
+        raise HTTPException(status_code=400, detail=f"Invalid region:{region}")
+    if not feat in meta_gefs["labels"]["feats"]:
+        raise HTTPException(status_code=400, detail=f"Invalid feat:{feat}")
+    if not int(itime) in meta_gefs["labels"]["itimes"][region]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid init time:{itime}"
+            )
+    if not pxy.isnumeric() or not pxx.isnumeric():
+        raise HTTPException(
+            status_code=400,
+            detail=f"pixels must be integer values, not ({pxy}, {pxx})"
+            )
+    fix = meta_gefs["labels"]["feats"].index(feat)
+    pxy = int(pxy)
+    pxx = int(pxx)
+    if pxy<0 or pxy >= meta_gefs["regions"][region]["height"]:
+        return []
+    if pxx<0 or pxx >= meta_gefs["regions"][region]["width"]:
+        return []
+    if m_valid[region][pxy,pxx] == False:
+        return []
+    x = zgrp[f"/regions/{region}/runs/{itime}/temporal"][fix,:,:,pxy, pxx]
+    return x.tolist()
+
 @app.get("/vector/{vgroup}/{region}")
 def vector(vgroup:str, region:str):
     """ endpoint for map polygon geojsons """
@@ -360,3 +396,25 @@ def cmaps():
 def gefs_vtimes():
     """ return json mapping regions to itimes to lists of string hour times """
     return vtimes
+
+@app.get("/regionmap/raster")
+def req_region_map_raster():
+    return Response(
+        content=rm_raster.tobytes(),
+        media_type="application/octet-stream",
+        headers={
+            "Content-Type":"application/octet-stream",
+            "Content-Length":str(rm_raster.nbytes),
+            }
+        )
+
+@app.get("/regionmap/borders")
+def req_region_map_borders():
+    return Response(
+        content=rm_borders.tobytes(),
+        media_type="application/octet-stream",
+        headers={
+            "Content-Type":"application/octet-stream",
+            "Content-Length":str(rm_borders.nbytes),
+            }
+        )

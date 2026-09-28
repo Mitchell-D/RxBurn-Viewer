@@ -7,7 +7,12 @@ import { DualRangeSlider } from "./DualRangeSlider.js";
 import { KeyedTable } from "./KeyedTable.js";
 import { GEFSRasterBuffer } from "./GEFSRasterBuffer.js";
 import { BufferSlider } from "./BufferSlider.js";
-import { vector_anchors, vector_styles, map_anchors } from "./map_styles.js";
+//import { vector_anchors, vector_styles, map_anchors } from "./map_styles.js";
+import {
+    vector_anchors, vector_styles, map_anchors,
+    highlight_anchors, highlight_styles,
+} from "./map_styles.js";
+import { RegionMapForm } from "./RegionMapForm.js";
 //import { MenuPoly } from "./menu_pgroup.js";
 //import { MenuRaster } from "./menu_raster.js";
 //import { ColorMap } from "./color_map.js";
@@ -43,6 +48,9 @@ const state = {
         mask_display_button:"button_display_mask",
         buffer_slider_container:"main_container_buffer_slider",
         vector_toggle_container:"main_container_vector_toggle",
+        region_map_canvas_container:"region_map_canvas_container",
+        fig_stats_label_variable:"fig_stats_label_variable",
+        fig_stats_label_location:"fig_stats_label_location",
 
         cmap_slider_container_id:"cmap_slider_row",
         threshold_slider_container_id:"threshold_slider_row",
@@ -89,6 +97,9 @@ const state = {
         dark_mode:"dark_mode.css",
         light_mode:"light_mode.css",
         map_glyphs:"https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
+        region_map_raster:"/api/regionmap/raster",
+        region_map_borders:"/api/regionmap/borders",
+        pixel:"/api/gefs/pixel"
     },
     labels:{
         regions:null,
@@ -155,6 +166,15 @@ const state = {
 
     // milliseconds between rendering updates to chill rapid buffering
     render_cooldown_ms:50,
+
+    region_map_form: {
+        raster:null,
+        borders:null,
+        width:null,
+        height:null,
+        mask_val:null,
+        highlight_color:[222,141,111,255],
+    },
 }
 
 // make a promise for when the DOM is loaded
@@ -178,6 +198,7 @@ let MAIN_CBAR = null;
 let MENU_TTABLE = null; // threshold table
 let RASTER_BUFFER = null;
 let BUFFER_SLIDER = null;
+let MAP_REGION = null; // region map form
 
 function fmt_date_string(dstr) {
     const s = `${dstr.slice(0,4)}-${dstr.slice(4,6)}-${dstr.slice(6,8)}`;
@@ -227,6 +248,10 @@ const meta_loaded = fetch(state.urls.menu)
         state.short_labels.metrics = r["short_labels"]["metrics"];
         state.short_labels.units = r["short_labels"]["units"];
 
+        state.region_map_form.width = r["region_map_form"]["width"];
+        state.region_map_form.height = r["region_map_form"]["height"];
+        state.region_map_form.mask_val = r["region_map_form"]["mask_val"];
+
         state.vector_toggle_state = r["vector_toggle_state"];
         console.log(state.vector_toggle_state);
 
@@ -244,6 +269,38 @@ const meta_loaded = fetch(state.urls.menu)
         state.sel.itime = state.labels.itimes[state.sel.region][last_ix];
         update_main_labels();
     });
+
+const region_map_forms_ready = Promise.all([
+    fetch(state.urls.region_map_raster).then((r) => r.arrayBuffer()),
+    fetch(state.urls.region_map_borders).then((r) => r.arrayBuffer()),
+    meta_loaded,
+]).then(r => {
+    state.region_map_form.raster = new Uint8Array(r[0]);
+    state.region_map_form.borders = new Uint8Array(r[1]);
+    MAP_REGION = new RegionMapForm({
+        canvas_container:state.dom.region_map_canvas_container,
+        width:state.region_map_form.width,
+        height:state.region_map_form.height,
+        pixel_ids:state.region_map_form.raster,
+        display_array:state.region_map_form.borders,
+        //default_id:state.labels.regions.indexOf(state.sel.region),
+        default_id:state.sel.region,
+        mask_val:state.region_map_form.mask_val,
+        highlight_color:state.region_map_form.highlight_color,
+    });
+
+    // no circular dependency here since MAP_REGION terminates when the
+    // same value is selected again.
+    MAP_REGION.subscribe(new_region => {
+        if (new_region == -1) return;
+        MENU_REGION.select(new_region);
+    });
+
+    MENU_REGION.subscribe(new_region => {
+        if (new_region == -1) return;
+        MAP_REGION.set_id(state.sel.region);
+    });
+})
 
 const cmaps_loaded = fetch(state.urls.cmaps)
     .then(r => r.json())
@@ -286,6 +343,9 @@ const map_started = Promise.all([dom_ready, meta_loaded])
             map_container:mcon,
             map_anchors:map_anchors,
             glyphs_url:state.urls.map_glyphs,
+            pixel_marker_anchor:highlight_anchors["pixel"],
+            pixel_marker_layers:highlight_styles["pixel"],
+            click_scope:"pixel",
         });
         MAP.set_region({
             bbox:[
@@ -300,7 +360,7 @@ const map_started = Promise.all([dom_ready, meta_loaded])
         });
     });
 
-// load the IFS menu and
+// load the GEFS menu
 const menu_forms_initialized = Promise.all([dom_ready, meta_loaded])
     .then(r => {
         const cmbtn = document.getElementById(state.dom.color_mode_button);
@@ -632,6 +692,47 @@ const vector_toggles_active = map_regions_bound
             //tb.classList.toggle("btn-secondary", !def_state);
         }
     });
+
+const map_click_active = Promise.all([map_regions_bound, sliders_initialized])
+    .then(() => {
+        // pgroup change and click scope logic here if added
+
+        // set plot on map click
+        console.log("subscribing map");
+        MAP.subscribe(click => {
+            console.log("map click", click);
+            let u = `/${state.sel.region}/${state.sel.feat}/`+state.sel.itime;
+            let p = null;
+            const lv = document.getElementById(
+                state.dom.fig_stats_label_variable);
+            const ll = document.getElementById(
+                state.dom.fig_stats_label_location);
+            lv.innerHTML = state.short_labels.feats[state.sel.feat]
+                + ` (${state.short_labels.units[state.sel.feat]})`;
+            if (click.type === "pixel") {
+                u += `/${click.pxy}/${click.pxx}`;
+                p = fetch(state.urls.pixel + u).then(r => r.json());
+                const short_lat = `${click.lat}`.slice(0, 6);
+                const short_lon = `${click.lon}`.slice(0, 7);
+                ll.innerHTML = `(${short_lat}, ${short_lon})`;
+            } else {
+                console.error("pgroups not yet supported");
+                /*
+                u += `/${state.sel.pgroup}/${click.UID}`;
+                p = fetch(state.urls.polygon + u).then(r => r.json());
+                if (state.sel.pgroup === "states") {
+                    ll.innerHTML = click.props.STATE
+                        .replace(/\b\w/g, c => c.toUpperCase());
+                } else if (state.sel.pgroup === "counties") {
+                    const cty_str = click.props.NAME
+                    const state_str = click.props.STATE
+                        .replace(/\b\w/g, c => c.toUpperCase());
+                    ll.innerHTML = `${cty_str}, ${state_str}`;
+                }
+                */
+            }
+        });
+    })
 
 /*
 const vectors_requestable = Promise.all([map_started, meta_loaded])

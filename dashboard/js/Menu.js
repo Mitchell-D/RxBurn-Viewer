@@ -172,6 +172,10 @@ export class Menu {
         this.buttons[selected].click();
     }
 
+    select(key) {
+        this.buttons[key].click();
+    }
+
     subscribe(callback)  {
         if (typeof callback !== "function") {
             throw new Error("Must provide a callback function not "+callback);

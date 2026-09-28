@@ -560,6 +560,8 @@ cfg_gefs_backend = {
         #"roads":["JURISNAME", "ROADNUM", "LANES"],
         "roads":["FULLNAME"],
         },
+    ## region map form value outside of any polygon boundary
+    "region_map_form_fill_val":255,
     }
 
 ## colormaps with which to generate lookup tables via matplotilb.

@@ -173,7 +173,7 @@ def acquire_gefs_forecast(zarr_path, region_key, date):
 if __name__=="__main__":
     data_dir = Path("data")
     src_dir = data_dir.joinpath("source/gefs")
-    zarr_out_path = data_dir.joinpath("store/rxburn_new.zarr")
+    zarr_out_path = data_dir.joinpath("store/rxburn.zarr")
 
     ## If True, completely overwrite any existing ensemble runs by init time.
     ## Coordinate and attribute data is always overwritten, so if appending
@@ -186,7 +186,7 @@ if __name__=="__main__":
 
     ## inclusive range of initialization times of ensemble files to acquire
     ingest_init_date_range = [
-        date.today() - timedelta(days=3),
+        date.today() - timedelta(days=4),
         date.today()
         ]
 

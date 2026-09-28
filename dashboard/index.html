@@ -39,12 +39,15 @@
 
     <main class="container-fluid flex-grow-1 d-flex flex-column">
       <div class="row flex-grow-1">
-        <div class="col-md-3 side-column">
+        <div class="col-md-2 side-column">
 
           <div class="row" id="menu_region_row">
             <div class="col menu-button-column">
               <div class="row justify-content-center">
                 <p class="menu-section-title">Region</p>
+              </div>
+              <div class="row justify-content-center">
+                <div id="region_map_canvas_container"></div>
               </div>
               <div class="row dropdown menu-button-container">
                 <button class="btn btn-primary dropdown-toggle dropdown-button menu-button" type="button" id="dd_button_region_name" data-bs-toggle="dropdown" aria-expanded="false">
@@ -164,7 +167,16 @@
           <!--<div class="row" id="fig_anom_container"></div>-->
         </div>
 
-        <div class="col-md-3 side-column">
+        <div class="col-md-4 side-column">
+          <!-- statistics figure -->
+          <div class="row" id="fig_stats_labels">
+            <div id="fig_stats_label_container">
+              <p class="fig-label" id="fig_stats_label_variable"></p>
+              <p class="fig-label" id="fig_stats_label_location"></p>
+            </div>
+          </div>
+          <div class="row" id="fig_stats_container"></div>
+
           <div class="row" id="menu_cmap_row">
             <div class="col-md-12 menu-button-column">
               <div class="row justify-content-center">
